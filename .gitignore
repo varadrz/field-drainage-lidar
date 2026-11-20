@@ -1,0 +1,146 @@
+# ==============================================================================
+# .gitignore for Field Drainage Using LiDAR
+# Python, Geospatial (GDAL/Rasterio/PDAL/Whitebox), and Streamlit Project
+# ==============================================================================
+
+# --- Operating System Files ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# --- Python & Environment ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env
+env.bak/
+venv.bak/
+ENV/
+env.local/
+
+# IDE & Editor Files
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# --- Geospatial & GIS Data Exclusions ---
+# Heavy Raw Point Clouds and Big Rasters (Keep repo lightweight < 50MB)
+data/input/*.las
+data/input/*.laz
+data/input/*.tif
+data/input/*.tiff
+data/input/*.xyz
+data/input/*.asc
+data/input/*.ply
+data/input/*.e57
+
+# Processed intermediate grids and large caches
+data/processed/*.tif
+data/processed/*.tiff
+data/processed/*.vrt
+data/processed/*.las
+data/processed/*.laz
+
+# Geospatial Auxiliary and Lock Files
+*.aux.xml
+*.tfw
+*.jgw
+*.wld
+*.ovr
+*.qix
+*.lock
+*.cpg
+*.shx.tmp
+
+# GIS Project Temp Files (QGIS, ArcGIS)
+*.qgs~
+*.qgz~
+*.aprx~
+*.gdb/
+*.lck
+
+# Generated Output Deliverables (Exclude bulky generated reports & exports)
+outputs/reports/*.pdf
+outputs/rasters/*.tif
+outputs/vectors/*.geojson
+outputs/vectors/*.gpkg
+outputs/vectors/*.shp
+outputs/vectors/*.dbf
+outputs/vectors/*.shx
+outputs/vectors/*.prj
+
+# But keep directory placeholders
+!data/
+!data/input/
+!data/input/.gitkeep
+!data/processed/
+!data/processed/.gitkeep
+!outputs/
+!outputs/reports/
+!outputs/reports/.gitkeep
+!outputs/rasters/
+!outputs/rasters/.gitkeep
+!outputs/vectors/
+!outputs/vectors/.gitkeep
+
+# --- WhiteboxTools Engine Artifacts ---
+WBT/
+whitebox_tools
+whitebox_tools.exe
+*.wbt_log.txt
+
+# --- Streamlit & Web App ---
+.streamlit/secrets.toml
+.streamlit/cache/
+
+# --- Testing & Coverage ---
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+nosetests.xml
+coverage.xml
+*.cover

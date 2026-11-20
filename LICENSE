@@ -1,0 +1,27 @@
+# Strict Proprietary License & Terms of Use
+
+Copyright (c) 2026 Varad Patil. All Rights Reserved.
+
+## 1. Proprietary Notice & Ownership
+The software, documentation, architecture designs, algorithms, data schemas, graphical assets, and all related intellectual property contained in this repository ("Software") are the sole and exclusive proprietary property of Varad Patil ("Author").
+
+## 2. Prohibition of Use, Copying, and Distribution
+NO PERMISSION IS GRANTED to any individual, corporation, organization, academic institution, or third party to:
+- Copy, duplicate, clone, replicate, or reproduce the Software or any portion thereof.
+- Modify, adapt, translate, enhance, refactor, or create derivative works based upon the Software.
+- Merge, integrate, embed, or incorporate the Software into any other software package, library, or platform.
+- Publish, broadcast, host, distribute, redistribute, transmit, or publicly display the Software or its source code.
+- Sublicense, lease, rent, sell, monetize, commercialize, or assign copies of the Software or associated documentation.
+- Use the code, architecture, algorithms, or documentation for training artificial intelligence, machine learning models, or commercial computer vision pipelines without express written authorization.
+
+## 3. Reverse Engineering & Extraction
+Reverse engineering, decompiling, disassembling, or otherwise attempting to discover the source code, underlying ideas, algorithms, or operational mechanics of any pre-compiled or obfuscated portions of this Software is strictly prohibited.
+
+## 4. Academic & Research Citation
+If concepts, algorithmic workflows, or methodologies described in this repository are referenced in academic literature, whitepapers, or research papers, proper attribution must be given to Varad Patil, citing the project title: *"Intelligent LiDAR-Based Agricultural Field Drainage Planning System (Field Drainage Using LiDAR)"*. However, citation does not confer any license to use, reproduce, or deploy the source code or system.
+
+## 5. Contact for Licensing
+For inquiries regarding evaluation licenses, commercial partnerships, research collaborations, or permissions, please contact the author directly via official channels.
+
+---
+*UNAUTHORIZED COPYING, REPRODUCTION, SHARING, OR EXPLOITATION OF THIS REPOSITORY IS STRICTLY PROHIBITED AND CONSTITUTES AN INFRINGEMENT OF INTERNATIONAL INTELLECTUAL PROPERTY LAWS.*
