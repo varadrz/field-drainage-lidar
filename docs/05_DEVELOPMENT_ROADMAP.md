@@ -159,3 +159,4 @@ Every PR or development iteration must satisfy the following automated verificat
    - Verify that all generated drainage routes maintain a strictly positive downward gradient ($Z_{i} > Z_{i+1}$) towards the outlet.
 3. **Reproducibility with QGIS:**
    - Output rasters and vectors are loaded into an automated headless QGIS Python (`qgis.core`) script to verify that layer extents, cell values, and vector geometries align with zero discrepancy.
+

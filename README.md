@@ -119,3 +119,4 @@ streamlit run app.py
 ## Intellectual Property & License
 Copyright (c) 2026 Varad Patil. All Rights Reserved.  
 This software, documentation, and architecture are proprietary. Strictly no permission is granted for copying, modifying, merging, publishing, distributing, sublicensing, or selling any part of this system without express prior written consent from the author.
+

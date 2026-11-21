@@ -191,3 +191,4 @@ The system applies a three-stage geometric and volumetric filter:
 ```
 
 Depressions surviving this filter are vectorized into GeoJSON polygons, color-coded by waterlogging risk category (Low, Moderate, Severe), and assigned priority IDs for downstream drainage routing.
+

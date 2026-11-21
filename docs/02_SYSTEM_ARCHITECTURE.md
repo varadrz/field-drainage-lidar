@@ -170,3 +170,4 @@ $$\text{Zone Number} = \left\lfloor \frac{\lambda + 180}{6} \right\rfloor + 1$$
 For northern hemisphere India:
 $$\text{Target EPSG} = 32600 + \text{Zone Number}$$
 If an ingested dataset lacks any spatial projection header, the pipeline halts immediately, presenting the user with an explicit CRS Selection Dialog rather than guessing blindly.
+

@@ -119,3 +119,4 @@ To facilitate immediate, offline, zero-network end-to-end testing, the project i
 - **Point Cloud Synthesis:** Generates a companion `.las` point cloud with synthetic returns (ground returns ASPRS Class 2, canopy vegetation ASPRS Class 3/4, with added Gaussian height jitter $\sigma = 0.02\text{ m}$).
 
 This synthetic generator provides 100% deterministic ground truth to verify that the extraction algorithms detect the exact known coordinates of ditches, obstacles, and sinks.
+

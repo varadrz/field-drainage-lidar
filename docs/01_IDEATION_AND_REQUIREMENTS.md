@@ -126,3 +126,4 @@ flowchart TD
 1. **DTM Fidelity:** Load system-generated DTM and raw LiDAR points into QGIS. Create an elevation difference raster (`System_DTM - QGIS_TIN_Interpolation`). The Root Mean Square Difference (RMSD) must be $<0.02\text{ m}$.
 2. **Hydrological Agreement:** Run `r.watershed` in QGIS GRASS toolbox on the same conditioned DTM. Compare the resulting stream raster with WhiteboxTools `D8FlowAccumulation`. Stream channels with accumulation $>1,000\text{ cells}$ must exhibit $>95\%$ spatial overlap (Dice Similarity Coefficient).
 3. **Ditch Extraction Validation:** Export extracted ditch centerlines as GeoJSON. Overlay in QGIS over high-resolution satellite imagery or synthetic ground truth vectors. Measure buffer precision ($1.0\text{ m}$ tolerance) and topological connectivity (no false dead-ends across road crossings).
+
