@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import numpy as np
 import rasterio
-from rasterio.transform import from_origin
+from rasterio.transform import Affine
 
 
 def generate_synthetic_farm(output_path: str = "data/sample/synthetic_indian_farm.tif") -> str:
@@ -102,8 +102,8 @@ def generate_synthetic_farm(output_path: str = "data/sample/synthetic_indian_far
     # Convert to float32
     dem = dem.astype(np.float32)
 
-    # Affine GeoTransform: (origin_x, pixel_width, 0, origin_y, 0, -pixel_height)
-    transform = from_origin(origin_x, origin_y, res, res)
+    # Affine GeoTransform: (pixel_width, 0, origin_x, 0, -pixel_height, origin_y)
+    transform = Affine(res, 0.0, origin_x, 0.0, -res, origin_y)
 
     # Write out GeoTIFF
     with rasterio.open(

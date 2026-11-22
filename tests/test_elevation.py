@@ -3,15 +3,17 @@ Unit and Integration Tests for Phase 1 Elevation Processing
 Validates synthetic farm generation, raster ingestion, NoData handling, and statistics calculations.
 """
 
+import io
 from pathlib import Path
 import numpy as np
 import pytest
 import rasterio
-from rasterio.transform import from_origin
+from rasterio.transform import Affine
 
 from scripts.generate_synthetic_farm import generate_synthetic_farm
 from modules.data_loader import load_raster, RasterMetadata
 from modules.elevation_analysis import compute_elevation_stats, ElevationStats
+from components.maps import create_elevation_map
 
 
 @pytest.fixture(scope="module")
@@ -80,7 +82,7 @@ def test_nodata_and_outlier_handling(tmp_path):
         [-32768.0, 104.0, 105.0]
     ], dtype=np.float32)
 
-    transform = from_origin(340000, 2050000, 1.0, 1.0)
+    transform = Affine(1.0, 0.0, 340000.0, 0.0, -1.0, 2050000.0)
     with rasterio.open(
         test_tif, "w",
         driver="GTiff", height=3, width=3, count=1,
@@ -114,3 +116,42 @@ def test_empty_raster_raises():
     all_nan = np.full((10, 10), np.nan, dtype=np.float32)
     with pytest.raises(ValueError, match="all raster cells are NoData/NaN"):
         compute_elevation_stats(all_nan, dummy_meta)
+
+
+def test_bytes_io_loading(synthetic_farm_path):
+    """Test loading raster from raw bytes / in-memory file buffer."""
+    with open(synthetic_farm_path, "rb") as f:
+        raw_bytes = f.read()
+
+    # Test raw bytes
+    elev_bytes, meta_bytes = load_raster(raw_bytes)
+    assert elev_bytes.shape == (150, 140)
+
+    # Test file-like BytesIO
+    buf = io.BytesIO(raw_bytes)
+    elev_buf, meta_buf = load_raster(buf)
+    assert elev_buf.shape == (150, 140)
+    assert meta_buf.crs_epsg == 32644
+
+
+def test_create_elevation_map(synthetic_farm_path):
+    """Test generating interactive Folium map."""
+    elevation, meta = load_raster(synthetic_farm_path)
+    stats = compute_elevation_stats(elevation, meta)
+    
+    fmap = create_elevation_map(elevation, meta, stats, colormap_name="terrain", opacity=0.8)
+    assert fmap is not None
+    html_repr = fmap.get_root().render()
+    assert "Elevation Surface (DTM)" in html_repr
+    assert "Field Boundary Extent" in html_repr
+
+
+def test_stats_to_dict(synthetic_farm_path):
+    """Test dictionary serialization of ElevationStats."""
+    elevation, meta = load_raster(synthetic_farm_path)
+    stats = compute_elevation_stats(elevation, meta)
+    stats_dict = stats.to_dict()
+    assert "Min Elevation (m)" in stats_dict
+    assert "Max Elevation (m)" in stats_dict
+    assert "Field Area (Acres)" in stats_dict
+    assert "Spatial Resolution" in stats_dict

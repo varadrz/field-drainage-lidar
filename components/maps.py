@@ -4,7 +4,13 @@ Builds responsive Folium / Leaflet maps with styled colored raster overlays,
 WGS84 coordinate handling, and dynamic colorbar legends.
 """
 
+import os
+from pathlib import Path
 from typing import Tuple, Optional
+
+# Configure temporary Matplotlib cache directory to avoid permission issues in restricted environments
+os.environ.setdefault("MPLCONFIGDIR", str(Path.cwd() / ".cache" / "matplotlib"))
+
 import numpy as np
 import folium
 from folium.raster_layers import ImageOverlay

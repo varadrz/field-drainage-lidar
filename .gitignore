@@ -135,6 +135,7 @@ whitebox_tools.exe
 .streamlit/cache/
 
 # --- Testing & Coverage ---
+.cache/
 .coverage
 .coverage.*
 htmlcov/
