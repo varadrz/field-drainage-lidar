@@ -1,28 +1,41 @@
-# Strict Proprietary License & Terms of Use
+PROPRIETARY AND CONFIDENTIAL SOFTWARE LICENSE AGREEMENT
 
 Copyright (c) 2026 Varad Patil. All Rights Reserved.
 
-## 1. Proprietary Notice & Ownership
-The software, documentation, architecture designs, algorithms, data schemas, graphical assets, and all related intellectual property contained in this repository ("Software") are the sole and exclusive proprietary property of Varad Patil ("Author").
+IMPORTANT: PLEASE READ THIS LICENSE AGREEMENT CAREFULLY BEFORE ACCESSING, VIEWING, OR USING ANY PORTION OF THIS SOFTWARE, SOURCE CODE, ARCHITECTURE SPECIFICATIONS, OR DOCUMENTATION.
 
-## 2. Prohibition of Use, Copying, and Distribution
-NO PERMISSION IS GRANTED to any individual, corporation, organization, academic institution, or third party to:
-- Copy, duplicate, clone, replicate, or reproduce the Software or any portion thereof.
-- Modify, adapt, translate, enhance, refactor, or create derivative works based upon the Software.
-- Merge, integrate, embed, or incorporate the Software into any other software package, library, or platform.
-- Publish, broadcast, host, distribute, redistribute, transmit, or publicly display the Software or its source code.
-- Sublicense, lease, rent, sell, monetize, commercialize, or assign copies of the Software or associated documentation.
-- Use the code, architecture, algorithms, or documentation for training artificial intelligence, machine learning models, or commercial computer vision pipelines without express written authorization.
+1. PROPRIETARY NATURE AND OWNERSHIP
+This software ("Software"), including but not limited to all source code, object code, algorithms, workflows, mathematical formulations, architecture designs, data schemas, graphical assets, synthetic datasets, and accompanying documentation ("Documentation"), is the sole, exclusive, and confidential proprietary property of Varad Patil ("Author" / "Licensor"). All title, ownership rights, and intellectual property rights in and to the Software and Documentation remain solely with the Licensor.
 
-## 3. Reverse Engineering & Extraction
-Reverse engineering, decompiling, disassembling, or otherwise attempting to discover the source code, underlying ideas, algorithms, or operational mechanics of any pre-compiled or obfuscated portions of this Software is strictly prohibited.
+2. STRICT RESERVATION OF RIGHTS AND NO LICENSE GRANT
+This Software is made available strictly for private evaluation and authorized inspection by the Author. NO LICENSE OR RIGHT IS GRANTED, EXPRESS OR IMPLIED, BY ESTOPPEL OR OTHERWISE, TO ANY RECIPIENT OR VIEWER.
 
-## 4. Academic & Research Citation
-If concepts, algorithmic workflows, or methodologies described in this repository are referenced in academic literature, whitepapers, or research papers, proper attribution must be given to Varad Patil, citing the project title: *"Intelligent LiDAR-Based Agricultural Field Drainage Planning System (Field Drainage Using LiDAR)"*. However, citation does not confer any license to use, reproduce, or deploy the source code or system.
+WITHOUT LIMITING THE GENERALITY OF THE FOREGOING, YOU MAY NOT, AND SHALL NOT PERMIT ANY THIRD PARTY TO:
+a. Copy, duplicate, reproduce, clone, or mirror the Software, Documentation, or any portion thereof.
+b. Modify, adapt, translate, enhance, refactor, decompile, disassemble, reverse engineer, or create derivative works based upon the Software.
+c. Merge, integrate, bundle, or incorporate the Software or any portion thereof into any other software, platform, product, or service.
+d. Distribute, publish, transmit, sublicense, lease, rent, sell, assign, transfer, monetize, or otherwise commercialize the Software or Documentation.
+e. Publicly display, broadcast, host, or make the Software available over a network or software-as-a-service (SaaS) platform.
+f. Ingest, scrape, parse, or use the Software, its source code, architecture, or documentation for training, fine-tuning, benchmarking, or evaluating artificial intelligence models, machine learning systems, large language models (LLMs), neural networks, or automated coding tools.
 
-## 5. Contact for Licensing
-For inquiries regarding evaluation licenses, commercial partnerships, research collaborations, or permissions, please contact the author directly via official channels.
+3. ACADEMIC AND RESEARCH ATTRIBUTION
+If the conceptual methodologies, algorithmic frameworks (e.g., adaptation of Roelens et al., 2018 for Indian Vertisols), or architectural designs described in this Software or Documentation are referenced in academic literature, whitepapers, or scientific research, formal attribution must be provided citing:
+    "Varad Patil, Intelligent LiDAR-Based Agricultural Field Drainage Planning System (Field Drainage Using LiDAR), 2026."
+Such citation or academic reference does NOT grant any right, permission, or license to copy, execute, reproduce, deploy, or distribute the Software or its underlying codebase.
 
----
-*UNAUTHORIZED COPYING, REPRODUCTION, SHARING, OR EXPLOITATION OF THIS REPOSITORY IS STRICTLY PROHIBITED AND CONSTITUTES AN INFRINGEMENT OF INTERNATIONAL INTELLECTUAL PROPERTY LAWS.*
+4. DISCLAIMER OF WARRANTIES
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, AND FREEDOM FROM DEFECTS OR ERRORS. THE AUTHOR DOES NOT WARRANT THAT THE FUNCTIONS CONTAINED IN THE SOFTWARE WILL MEET YOUR REQUIREMENTS OR THAT THE OPERATION OF THE SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE. ANY RELIANCE UPON THE SOFTWARE IS SOLELY AT YOUR OWN RISK.
 
+5. LIMITATION OF LIABILITY
+IN NO EVENT SHALL THE AUTHOR (VARAD PATIL) BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, REVENUE, CROPS, AGRICULTURAL YIELD, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF, VIEWING OF, OR INABILITY TO USE THIS SOFTWARE OR DOCUMENTATION, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+6. TERMINATION AND REMEDIES
+Any breach of this License Agreement immediately and automatically terminates any implied permission to view or evaluate the Software. Upon termination, you must immediately destroy all copies of the Software and Documentation in your possession. The Author reserves the right to seek all remedies available under civil, criminal, and international copyright laws, including injunctive relief and statutory damages for copyright infringement and trade secret misappropriation.
+
+7. GOVERNING LAW AND SEVERABILITY
+This Agreement shall be governed by and construed in accordance with the laws of India, without regard to its conflict of law principles. If any provision of this Agreement is held to be invalid or unenforceable, such provision shall be enforced to the maximum extent permissible, and the remaining provisions of this Agreement shall remain in full force and effect.
+
+8. CONTACT & LICENSING INQUIRIES
+For written permissions, commercial licensing, research collaborations, or technology transfer inquiries, contact the author:
+Varad Patil
+Email: wm.varad.patil@gmail.com
