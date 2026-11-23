@@ -1,7 +1,7 @@
 """
-Field Drainage Using LiDAR - Phase 1 Web Application
+Field Drainage Using LiDAR - Phase 2 Web Application
 Intelligent LiDAR-Based Agricultural Field Drainage Planning System
-Interactive Streamlit Dashboard & Elevation Viewer
+Interactive Streamlit Dashboard & Terrain Analysis Engine
 """
 
 import os
@@ -11,47 +11,80 @@ from streamlit_folium import st_folium
 
 from modules.data_loader import load_raster
 from modules.elevation_analysis import compute_elevation_stats
-from components.maps import create_elevation_map
+from modules.terrain_analysis import compute_terrain_summary, extract_contours_geojson
+from components.maps import create_terrain_map
 
 # Configure Streamlit Page
 st.set_page_config(
-    page_title="Field Drainage Using LiDAR | Elevation Viewer",
+    page_title="Field Drainage Using LiDAR | Terrain Analysis",
     page_icon="🌾",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for Professional Agronomic Styling
+# Custom CSS for Professional Minimalist Dark Agronomic Styling
 st.markdown("""
 <style>
     .main-header {
         font-size: 2.1rem;
         font-weight: 700;
-        color: #1b4332;
+        color: #2ecc71;
         margin-bottom: 0.2rem;
+        letter-spacing: -0.5px;
     }
     .sub-header {
-        font-size: 1.05rem;
-        color: #40916c;
+        font-size: 1.02rem;
+        color: #94a3b8;
         margin-bottom: 1.2rem;
     }
     .metric-card {
-        background-color: #f8f9fa;
+        background-color: #14181f;
         border-radius: 8px;
-        padding: 12px 16px;
-        border-left: 5px solid #2d6a4f;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        padding: 12px 14px;
+        border: 1px solid #1f2937;
+        border-left: 5px solid #2ecc71;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        margin-bottom: 8px;
+    }
+    .metric-card-alert {
+        background-color: #1a1510;
+        border-radius: 8px;
+        padding: 12px 14px;
+        border: 1px solid #372810;
+        border-left: 5px solid #f59e0b;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        margin-bottom: 8px;
+    }
+    .metric-card-sink {
+        background-color: #0c1829;
+        border-radius: 8px;
+        padding: 12px 14px;
+        border: 1px solid #143254;
+        border-left: 5px solid #38bdf8;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        margin-bottom: 8px;
     }
     .metric-label {
-        font-size: 0.85rem;
-        color: #6c757d;
+        font-size: 0.78rem;
+        color: #94a3b8;
         font-weight: 600;
         text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     .metric-value {
-        font-size: 1.5rem;
+        font-size: 1.35rem;
         font-weight: 700;
-        color: #1b4332;
+        color: #f0f4f8;
+    }
+    .metric-value-alert {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #fbbf24;
+    }
+    .metric-value-sink {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #38bdf8;
     }
     .stAlert {
         border-radius: 8px;
@@ -64,7 +97,7 @@ def main():
     # Application Title & Subtitle
     st.markdown('<div class="main-header">🌾 Field Drainage Using LiDAR</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="sub-header">Intelligent Agricultural Field Drainage Planning System &bull; Phase 1: Foundation & Elevation Viewer</div>',
+        '<div class="sub-header">Intelligent Agricultural Field Drainage Planning System &bull; Phase 2: Terrain Analysis & Surface Viewer</div>',
         unsafe_allow_html=True
     )
 
@@ -82,9 +115,22 @@ def main():
         )
 
         st.markdown("---")
-        st.subheader("🎨 Map Visualization")
+        st.subheader("🎨 Map & Layer Controls")
+        
+        default_layer_choice = st.selectbox(
+            "Primary Viewport Focus",
+            options=[
+                "Elevation Surface (DTM)",
+                "Slope Map (% Grade)",
+                "Hillshade (Shaded Relief)",
+                "Aspect Map (Direction)"
+            ],
+            index=0,
+            help="Select the initial active layer overlay on the map. You can also toggle layers dynamically on the top-right map menu."
+        )
+
         colormap_choice = st.selectbox(
-            "Colormap Palette",
+            "Elevation Colormap Palette",
             options=["terrain", "viridis", "plasma", "YlGnBu", "gist_earth"],
             index=0,
             help="Select color ramp for visualizing elevation gradients."
@@ -99,7 +145,26 @@ def main():
         )
 
         st.markdown("---")
-        st.caption("🛡️ **System Architecture:** 100% Free Open-Source Stack (Python, Rasterio, Folium, Streamlit).")
+        st.subheader("📐 Terrain Parameters")
+        
+        contour_interval = st.selectbox(
+            "Contour Interval (m)",
+            options=[0.1, 0.25, 0.5, 1.0],
+            index=1,
+            help="Vertical contour interval for vector contour extraction."
+        )
+
+        sink_threshold_m = st.slider(
+            "Min Depression Depth (m)",
+            min_value=0.02,
+            max_value=0.20,
+            value=0.05,
+            step=0.01,
+            help="Minimum sink depth to isolate genuine waterlogging depressions from tillage soil roughness."
+        )
+
+        st.markdown("---")
+        st.caption("🛡️ **System Architecture:** 100% Free Open-Source Stack (Python, Rasterio, SciPy, Folium, Streamlit).")
         st.caption("© 2026 Varad Patil. All Rights Reserved.")
 
     # Determine which raster source to process
@@ -125,41 +190,55 @@ def main():
         col_info1, col_info2 = st.columns(2)
         with col_info1:
             st.markdown("""
-            ### 🎯 Phase 1 Capabilities
-            - **Robust GeoTIFF Ingestion:** Validates raster integrity, affine bounds, and spatial projection.
-            - **Metric CRS Preservation:** Audits Indian UTM zones (e.g., EPSG:32643, EPSG:32644) and warns if unprojected degrees are used.
-            - **NoData & Outlier Masking:** Automatically handles negative invalid nodata values (`-9999`, `-32768`).
-            - **High-Precision Statistics:** Computes true field acreage, relief range, and statistical dispersion.
+            ### 🎯 Phase 2: Terrain Analysis Capabilities
+            - **Horn 3×3 Slope & Aspect:** Calculates continuous slope in degrees and agronomic percent grade (`%`), plus 360° compass aspect.
+            - **Lambertian Shaded Relief (Hillshade):** Renders micro-topography, bund ridges, and ditches in clear relief.
+            - **Vector Contour Extraction:** Computes sub-meter vector contour lines (GeoJSON) dynamically mapped onto Leaflet.
+            - **Priority-Flood Sink Detection:** Pinpoints natural waterlogging depressions and estimates stored water volumes.
             """)
         with col_info2:
             st.markdown("""
-            ### 🚜 Why Surface Drainage Matters in India
-            - **Black Cotton Soils (Vertisols):** Swell on wetting, dropping hydraulic conductivity to near-zero and suffocating crop roots.
-            - **Field Bund Obstacles:** Perimeter ridges (*medh/daul*) trap storm runoff in micro-depressions.
-            - **Phase 1 Foundation:** Sets up the certified coordinate reference pipeline required for downstream Whitebox hydrological routing and Roelens ditch extraction.
+            ### 🚜 Agronomic Context: Indian Farmland
+            - **Drainage Thresholds:** Lands with $<0.5\%$ slope require engineered surface channels to prevent ponding in Vertisols.
+            - **Earthen Perimeter Bunds (*Medh/Daul*):** Frequently create artificial catchment basins by blocking natural overland runoff.
+            - **Automated Hotspot Sizing:** Calculates depression area and required excavation volume for subsequent gravity alignment.
             """)
         return
 
-    # --- PROCESS RASTER ---
+    # --- PROCESS RASTER & TERRAIN ENGINE ---
     try:
-        with st.spinner("Analyzing elevation raster and calculating terrain statistics..."):
+        with st.spinner("Executing terrain analysis engine (Slope, Aspect, Hillshade, Contours, Sinks)..."):
             elevation, metadata = load_raster(raster_source)
             stats = compute_elevation_stats(elevation, metadata)
+            (
+                terrain_summary,
+                slope_deg,
+                slope_pct,
+                aspect,
+                hillshade,
+                dep_depth
+            ) = compute_terrain_summary(elevation, metadata, min_depth_m=sink_threshold_m)
+
+            contour_geojson = extract_contours_geojson(
+                elevation,
+                metadata,
+                interval=contour_interval
+            )
     except Exception as e:
-        st.error(f"❌ Error loading raster: {str(e)}")
+        st.error(f"❌ Error during terrain processing: {str(e)}")
         return
 
     # --- CRS ALERT CHECKS ---
     if metadata.is_geographic:
         st.warning(
             "⚠️ **Geographic CRS Detected (Degrees):** This raster uses latitude/longitude degrees rather than projected meters. "
-            "Surface area and distance calculations are approximated. For sub-meter drainage accuracy, reproject to an Indian UTM Zone (e.g., EPSG:32643 or EPSG:32644)."
+            "Surface area and distance calculations are approximated. Reproject to an Indian UTM Zone (e.g., EPSG:32643 or EPSG:32644) for millimeter-grade accuracy."
         )
     else:
-        st.success(f"✅ **Validated Metric Coordinate System:** {stats.crs_display} &bull; Native units: **{metadata.units}**")
+        st.success(f"✅ **Validated Metric Coordinate System:** {stats.crs_display} &bull; Native units: **{metadata.units}** &bull; Resolution: **{stats.spatial_resolution_m:.2f} m/pixel**")
 
-    # --- KPI METRIC CARDS ---
-    st.markdown("### 📊 Field Elevation & Terrain Metrics")
+    # --- KPI METRIC CARDS (ELEVATION & TERRAIN) ---
+    st.markdown("### 📊 Field Elevation & Macro-Relief Metrics")
     m1, m2, m3, m4, m5, m6 = st.columns(6)
     
     with m1:
@@ -205,29 +284,81 @@ def main():
     with m6:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Resolution</div>
+            <div class="metric-label">Grid Resolution</div>
             <div class="metric-value">{stats.spatial_resolution_m:.1f} m/px</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # --- TERRAIN & DRAINAGE SUMMARY PANEL ---
+    st.markdown("### 🚜 Terrain Slope & Waterlogging Vulnerability Panel")
+    t1, t2, t3, t4, t5 = st.columns(5)
+
+    with t1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Average Slope</div>
+            <div class="metric-value">{terrain_summary.mean_slope_pct:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with t2:
+        st.markdown(f"""
+        <div class="metric-card-alert">
+            <div class="metric-label">Poorly Drained (&lt;0.5%)</div>
+            <div class="metric-value-alert">{terrain_summary.flat_area_pct:.1f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with t3:
+        st.markdown(f"""
+        <div class="metric-card-sink">
+            <div class="metric-label">Depression Hotspots</div>
+            <div class="metric-value-sink">{terrain_summary.depression_count} clusters</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with t4:
+        st.markdown(f"""
+        <div class="metric-card-sink">
+            <div class="metric-label">Total Sink Area</div>
+            <div class="metric-value-sink">{terrain_summary.depression_acres:.2f} ac</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with t5:
+        st.markdown(f"""
+        <div class="metric-card-sink">
+            <div class="metric-label">Est. Stored Water</div>
+            <div class="metric-value-sink">{terrain_summary.est_depression_volume_m3:,.0f} m³</div>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- INTERACTIVE MAP VIEWPORT ---
-    st.markdown(f"### 🗺️ Interactive Elevation Viewer &bull; *{source_name}*")
+    st.markdown(f"### 🗺️ Interactive Multi-Layer GIS Viewer &bull; *{source_name}*")
+    st.caption("💡 Use the top-right layer switch menu on the map to toggle between DTM, Slope, Aspect, Hillshade, Contours, and Waterlogging Depressions.")
     
     with st.spinner("Rendering interactive geospatial Leaflet overlay..."):
-        fmap = create_elevation_map(
+        fmap = create_terrain_map(
             elevation=elevation,
             metadata=metadata,
-            stats=stats,
+            elevation_stats=stats,
+            terrain_summary=terrain_summary,
+            slope_pct=slope_pct,
+            aspect=aspect,
+            hillshade=hillshade,
+            depression_depth=dep_depth,
+            contour_geojson=contour_geojson,
             colormap_name=colormap_choice,
-            opacity=opacity_slider
+            layer_opacity=opacity_slider,
+            default_layer=default_layer_choice
         )
-        st_folium(fmap, width="100%", height=550)
+        st_folium(fmap, width="100%", height=560)
 
     # --- DETAILED METADATA & DATA TABLE EXPANDER ---
-    with st.expander("🔍 View Technical Geospatial Metadata"):
-        c1, c2 = st.columns(2)
+    with st.expander("🔍 View Technical Geospatial & Terrain Metrics"):
+        c1, c2, c3 = st.columns(3)
         with c1:
             st.write("**Raster Dimensions & Pixels:**")
             st.json({
@@ -243,11 +374,14 @@ def main():
             st.json({
                 "CRS": stats.crs_display,
                 "Projected Metric": metadata.is_projected,
-                "Native Bounds (Left, Bottom, Right, Top)": [round(b, 2) for b in metadata.bounds_native],
-                "WGS84 Bounds (Lon Min, Lat Min, Lon Max, Lat Max)": [round(b, 6) for b in metadata.bounds_wgs84],
+                "Native Bounds": [round(b, 2) for b in metadata.bounds_native],
+                "WGS84 Bounds": [round(b, 6) for b in metadata.bounds_wgs84],
                 "Calculated Area (m²)": f"{stats.area_sq_m:,.1f} m²",
                 "Calculated Area (Hectares)": f"{stats.area_ha:.3f} ha"
             })
+        with c3:
+            st.write("**Terrain Slope & Depression Profile:**")
+            st.json(terrain_summary.to_dict())
 
 
 if __name__ == "__main__":
