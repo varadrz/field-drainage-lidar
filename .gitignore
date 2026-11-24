@@ -76,11 +76,8 @@ data/input/*.ply
 data/input/*.e57
 
 # Processed intermediate grids and large caches
-data/processed/*.tif
-data/processed/*.tiff
-data/processed/*.vrt
-data/processed/*.las
-data/processed/*.laz
+data/processed/*
+!data/processed/.gitkeep
 
 # Geospatial Auxiliary and Lock Files
 *.aux.xml

@@ -1,7 +1,7 @@
 """
-Field Drainage Using LiDAR - Phase 2 Web Application
+Field Drainage Using LiDAR - Phase 3 Web Application
 Intelligent LiDAR-Based Agricultural Field Drainage Planning System
-Interactive Streamlit Dashboard & Terrain Analysis Engine
+Interactive Streamlit Dashboard & WhiteboxTools Hydrological Engine
 """
 
 import os
@@ -12,11 +12,12 @@ from streamlit_folium import st_folium
 from modules.data_loader import load_raster
 from modules.elevation_analysis import compute_elevation_stats
 from modules.terrain_analysis import compute_terrain_summary, extract_contours_geojson
+from modules.hydrology import run_hydrological_analysis
 from components.maps import create_terrain_map
 
 # Configure Streamlit Page
 st.set_page_config(
-    page_title="Field Drainage Using LiDAR | Land & Waterlogging Viewer",
+    page_title="Field Drainage Using LiDAR | Hydrological Modeling",
     page_icon="🌾",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -64,6 +65,15 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         margin-bottom: 8px;
     }
+    .metric-card-stream {
+        background-color: #0d1f1d;
+        border-radius: 8px;
+        padding: 12px 14px;
+        border: 1px solid #134e48;
+        border-left: 5px solid #00f5d4;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        margin-bottom: 8px;
+    }
     .metric-label {
         font-size: 0.78rem;
         color: #94a3b8;
@@ -86,6 +96,11 @@ st.markdown("""
         font-weight: 700;
         color: #38bdf8;
     }
+    .metric-value-stream {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #00f5d4;
+    }
     .stAlert {
         border-radius: 8px;
     }
@@ -97,7 +112,7 @@ def main():
     # Application Title & Subtitle
     st.markdown('<div class="main-header">🌾 Field Drainage Using LiDAR</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="sub-header">Smart Farm Drainage Assistant &bull; Land Slope, Elevation &amp; Waterlogging Risk Viewer</div>',
+        '<div class="sub-header">Smart Farm Drainage Assistant &bull; Phase 3: Hydrological Modeling &amp; Water Flow Concentration</div>',
         unsafe_allow_html=True
     )
 
@@ -121,9 +136,13 @@ def main():
             "Main Map Layer",
             options=[
                 "Land Elevation Map",
+                "Natural Runoff Paths (Streams)",
+                "Water Flow Concentration",
+                "Waterlogging Depth Zones",
                 "Land Slope (% Grade)",
                 "3D Land Shape (Hillshade)",
-                "Slope Direction (Aspect)"
+                "Slope Direction (Aspect)",
+                "Field Catchments (Sub-Basins)"
             ],
             index=0,
             help="Choose which layer appears first on the map. You can also turn layers on and off anytime using the top-right map menu."
@@ -146,8 +165,26 @@ def main():
         )
 
         st.markdown("---")
-        st.subheader("⚙️ Drainage Settings")
+        st.subheader("💧 Water Flow & Hydrology")
         
+        flow_accum_threshold = st.slider(
+            "Channel Sensitivity (Flow Threshold)",
+            min_value=30,
+            max_value=300,
+            value=80,
+            step=10,
+            help="Accumulated upstream cell threshold to extract natural runoff channels. Lower values show small surface trickles; higher values isolate major drainage gullies."
+        )
+
+        sink_threshold_m = st.slider(
+            "Minimum Waterlogging Depth (m)",
+            min_value=0.02,
+            max_value=0.20,
+            value=0.05,
+            step=0.01,
+            help="Minimum puddle depth to flag as a genuine waterlogging depression (filters minor tillage roughness)."
+        )
+
         contour_interval = st.selectbox(
             "Elevation Line Gap (m)",
             options=[0.1, 0.25, 0.5, 1.0],
@@ -155,17 +192,8 @@ def main():
             help="Height step between contour lines (e.g., 0.25 m shows fine micro-slope details across flat plots)."
         )
 
-        sink_threshold_m = st.slider(
-            "Minimum Puddle Depth to Flag (m)",
-            min_value=0.02,
-            max_value=0.20,
-            value=0.05,
-            step=0.01,
-            help="Ignores small plow furrows and soil clods below this depth so only real waterlogging spots are highlighted."
-        )
-
         st.markdown("---")
-        st.caption("🛡️ **Smart Agri-Drainage:** Built with 100% free, open-source technology for farmers and agronomists.")
+        st.caption("🛡️ **Smart Agri-Drainage:** Powered by WhiteboxTools Open Core & 100% free open-source technology.")
         st.caption("© 2026 Varad Patil. All Rights Reserved.")
 
     # Determine which raster source to process
@@ -194,8 +222,8 @@ def main():
             ### 🎯 What This Tool Does For You
             - **Easy Field Map Upload:** Ingests elevation maps from drone surveys or open satellite data.
             - **Accurate Distance & Area Checks:** Validates real metric units (meters, acres, hectares) so channel lengths are precise.
-            - **Automatic Data Cleanup:** Cleans missing boundary values and bad sensor readings automatically.
-            - **Slope & Natural Drainage Flow:** Calculates exact land slope (%) and shows where runoff naturally heads.
+            - **D8 Flow Direction & Accumulation:** Tracks upstream contributing area cell-by-cell to map runoff concentration.
+            - **Natural Runoff Extraction:** Automatically traces natural gullies and surface streams with precise lengths.
             - **Waterlogging Risk Spots:** Detects trapped hollows and estimates how much water could pool in them after heavy rains.
             """)
         with col_info2:
@@ -207,9 +235,9 @@ def main():
             """)
         return
 
-    # --- PROCESS RASTER & TERRAIN ENGINE ---
+    # --- PROCESS RASTER, TERRAIN & HYDROLOGY ENGINE ---
     try:
-        with st.spinner("Analyzing field topography, slope, and waterlogging risks..."):
+        with st.spinner("Executing WhiteboxTools hydrological engine (D8 Flow, Accumulation, Stream Extraction, Sinks)..."):
             elevation, metadata = load_raster(raster_source)
             stats = compute_elevation_stats(elevation, metadata)
             (
@@ -218,7 +246,7 @@ def main():
                 slope_pct,
                 aspect,
                 hillshade,
-                dep_depth
+                _
             ) = compute_terrain_summary(elevation, metadata, min_depth_m=sink_threshold_m)
 
             contour_geojson = extract_contours_geojson(
@@ -226,8 +254,27 @@ def main():
                 metadata,
                 interval=contour_interval
             )
+
+            # Determine disk path for WhiteboxTools
+            if isinstance(raster_source, (str, Path)):
+                dem_file_path = str(raster_source)
+            else:
+                temp_dem = Path("data/processed/uploaded_field.tif")
+                temp_dem.parent.mkdir(parents=True, exist_ok=True)
+                with open(temp_dem, "wb") as f:
+                    f.write(raster_source.getvalue() if hasattr(raster_source, "getvalue") else raster_source.read())
+                dem_file_path = str(temp_dem)
+
+            # Execute Phase 3 Hydrological Analysis
+            hydro_result = run_hydrological_analysis(
+                dem_source=dem_file_path,
+                output_dir="data/processed",
+                flow_accum_threshold=float(flow_accum_threshold),
+                min_waterlogging_depth_m=sink_threshold_m,
+                metadata=metadata
+            )
     except Exception as e:
-        st.error(f"❌ Error during terrain processing: {str(e)}")
+        st.error(f"❌ Error during hydrological processing: {str(e)}")
         return
 
     # --- CRS ALERT CHECKS ---
@@ -291,55 +338,55 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
-    # --- TERRAIN & DRAINAGE SUMMARY PANEL ---
-    st.markdown("### 🚜 Land Slope & Waterlogging Risk Summary")
-    t1, t2, t3, t4, t5 = st.columns(5)
+    # --- PHASE 3 HYDROLOGY & RUNOFF SUMMARY PANEL ---
+    st.markdown("### 💧 Hydrological Runoff & Waterlogging Vulnerability Panel")
+    h1, h2, h3, h4, h5 = st.columns(5)
 
-    with t1:
+    with h1:
+        st.markdown(f"""
+        <div class="metric-card-stream">
+            <div class="metric-label">Natural Runoff Channels</div>
+            <div class="metric-value-stream">{hydro_result.total_stream_length_m:,.0f} m</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with h2:
+        st.markdown(f"""
+        <div class="metric-card-sink">
+            <div class="metric-label">Max Ponding Depth</div>
+            <div class="metric-value-sink">{hydro_result.max_waterlogging_depth_cm:.1f} cm</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with h3:
+        st.markdown(f"""
+        <div class="metric-card-sink">
+            <div class="metric-label">Ponding Surface Area</div>
+            <div class="metric-value-sink">{hydro_result.waterlogging_area_acres:.2f} ac</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with h4:
+        st.markdown(f"""
+        <div class="metric-card-sink">
+            <div class="metric-label">Trapped Water Volume</div>
+            <div class="metric-value-sink">{hydro_result.total_waterlogging_volume_m3:,.0f} m³</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with h5:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Average Land Slope</div>
-            <div class="metric-value">{terrain_summary.mean_slope_pct:.2f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with t2:
-        st.markdown(f"""
-        <div class="metric-card-alert">
-            <div class="metric-label">Flat / Poor Drainage (&lt;0.5%)</div>
-            <div class="metric-value-alert">{terrain_summary.flat_area_pct:.1f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with t3:
-        st.markdown(f"""
-        <div class="metric-card-sink">
-            <div class="metric-label">Waterlogging Spots</div>
-            <div class="metric-value-sink">{terrain_summary.depression_count} spots</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with t4:
-        st.markdown(f"""
-        <div class="metric-card-sink">
-            <div class="metric-label">Total Ponding Area</div>
-            <div class="metric-value-sink">{terrain_summary.depression_acres:.2f} ac</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with t5:
-        st.markdown(f"""
-        <div class="metric-card-sink">
-            <div class="metric-label">Est. Trapped Water</div>
-            <div class="metric-value-sink">{terrain_summary.est_depression_volume_m3:,.0f} m³</div>
+            <div class="metric-label">Field Sub-Catchments</div>
+            <div class="metric-value">{hydro_result.sub_basin_count} basins</div>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- INTERACTIVE MAP VIEWPORT ---
-    st.markdown(f"### 🗺️ Interactive Field Drainage Map &bull; *{source_name}*")
-    st.caption("💡 Tip: Click the layer icon in the top-right of the map to turn individual map views on or off.")
+    st.markdown(f"### 🗺️ Interactive Field Drainage & Water Flow Map &bull; *{source_name}*")
+    st.caption("💡 Tip: Click the layer icon in the top-right of the map to toggle between Runoff Paths, Flow Accumulation, Waterlogging Zones, DTM, Slope, and Sub-Basins.")
     
     with st.spinner("Rendering interactive field map..."):
         fmap = create_terrain_map(
@@ -350,17 +397,20 @@ def main():
             slope_pct=slope_pct,
             aspect=aspect,
             hillshade=hillshade,
-            depression_depth=dep_depth,
+            depression_depth=hydro_result.depression_depth_array,
             contour_geojson=contour_geojson,
+            flow_accum=hydro_result.flow_accum_array,
+            streams_geojson=hydro_result.streams_geojson,
+            basins_geojson=hydro_result.basins_geojson,
             colormap_name=colormap_choice,
             layer_opacity=opacity_slider,
             default_layer=default_layer_choice
         )
-        st_folium(fmap, width="100%", height=560)
+        st_folium(fmap, width="100%", height=570)
 
     # --- DETAILED METADATA & DATA TABLE EXPANDER ---
-    with st.expander("🔍 Technical Map & Measurement Details (Advanced)"):
-        c1, c2, c3 = st.columns(3)
+    with st.expander("🔍 Technical Geospatial & Hydrological Metrics (Advanced)"):
+        c1, c2, c3, c4 = st.columns(4)
         with c1:
             st.write("**Grid Dimensions & Data Quality:**")
             st.json({
@@ -382,8 +432,11 @@ def main():
                 "Calculated Area (Hectares)": f"{stats.area_ha:.3f} ha"
             })
         with c3:
-            st.write("**Slope & Waterlogging Breakdown:**")
+            st.write("**Slope & Relief Profile:**")
             st.json(terrain_summary.to_dict())
+        with c4:
+            st.write("**WhiteboxTools Hydrology Profile:**")
+            st.json(hydro_result.to_dict())
 
 
 if __name__ == "__main__":

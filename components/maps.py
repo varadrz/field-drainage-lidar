@@ -1,7 +1,8 @@
 """
 Interactive Web Map Component
 Builds responsive Folium / Leaflet maps with styled colored raster overlays,
-multi-layer controls (Elevation, Slope, Aspect, Hillshade, Contours, Depressions),
+multi-layer controls (Elevation, Slope, Aspect, Hillshade, Contours, Depressions,
+Natural Runoff Paths, Flow Accumulation, Sub-Catchments),
 WGS84 coordinate handling, and dynamic colorbar legends.
 """
 
@@ -42,7 +43,7 @@ def array_to_rgba(
     
     Args:
         data: 2D numpy array with NaNs.
-        colormap_name: Name of Matplotlib colormap (e.g. 'terrain', 'YlOrRd', 'twilight').
+        colormap_name: Name of Matplotlib colormap (e.g. 'terrain', 'YlOrRd', 'twilight', 'Blues').
         vmin: Minimum value for normalization (defaults to np.nanmin(data)).
         vmax: Maximum value for normalization (defaults to np.nanmax(data)).
         alpha: Master opacity multiplier (0.0 - 1.0).
@@ -88,28 +89,18 @@ def create_terrain_map(
     hillshade: Optional[np.ndarray] = None,
     depression_depth: Optional[np.ndarray] = None,
     contour_geojson: Optional[Dict[str, Any]] = None,
+    flow_accum: Optional[np.ndarray] = None,
+    streams_geojson: Optional[Dict[str, Any]] = None,
+    basins_geojson: Optional[Dict[str, Any]] = None,
     colormap_name: str = "terrain",
     layer_opacity: float = 0.75,
-    default_layer: str = "Elevation Surface (DTM)"
+    default_layer: str = "Land Elevation Map"
 ) -> folium.Map:
     """
     Renders an interactive multi-layer GIS map with Elevation, Slope, Aspect,
-    Hillshade, Vector Contours, and Waterlogging Depressions.
+    Hillshade, Vector Contours, Waterlogging Depressions, Natural Runoff Streams,
+    Flow Accumulation, and Sub-Basins.
     
-    Args:
-        elevation: 2D array of elevation values.
-        metadata: RasterMetadata object.
-        elevation_stats: ElevationStats summary.
-        terrain_summary: Optional TerrainSummary with slope and depression stats.
-        slope_pct: Optional 2D array of slope in percent grade.
-        aspect: Optional 2D array of aspect in compass degrees.
-        hillshade: Optional 2D uint8 array (0-255).
-        depression_depth: Optional 2D array of sink depths in meters.
-        contour_geojson: Optional GeoJSON FeatureCollection of contour lines.
-        colormap_name: Colormap for elevation surface.
-        layer_opacity: Transparency for raster overlays.
-        default_layer: Which primary raster overlay to activate initially.
-        
     Returns:
         folium.Map object ready for Streamlit display.
     """
@@ -159,8 +150,9 @@ def create_terrain_map(
     is_slope_active = default_layer in ["Land Slope (% Grade)", "Slope Map (% Grade)"]
     is_hs_active = default_layer in ["3D Land Shape (Hillshade)", "Hillshade (Shaded Relief)"]
     is_aspect_active = default_layer in ["Slope Direction (Aspect)", "Aspect Map (Direction)"]
+    is_flow_active = default_layer in ["Water Flow Concentration", "Water Flow Concentration (Accumulation)"]
 
-    # 3. Layer: Hillshade (Shaded Relief)
+    # 4. Layer: Hillshade (Shaded Relief)
     if hillshade is not None:
         valid_mask = ~np.isnan(elevation)
         hs_rgba = np.zeros((hillshade.shape[0], hillshade.shape[1], 4), dtype=np.uint8)
@@ -180,7 +172,7 @@ def create_terrain_map(
             zindex=2
         ).add_to(fmap)
 
-    # 4. Layer: Elevation Surface (DTM)
+    # 5. Layer: Elevation Surface (DTM)
     elev_rgba = array_to_rgba(
         elevation,
         colormap_name=colormap_name,
@@ -198,9 +190,8 @@ def create_terrain_map(
         zindex=3
     ).add_to(fmap)
 
-    # 5. Layer: Slope Map (% Grade)
+    # 6. Layer: Slope Map (% Grade)
     if slope_pct is not None:
-        # Agricultural slope scale: 0% to 5% is standard field range; cap at 95th percentile
         valid_slopes = slope_pct[~np.isnan(slope_pct)]
         vmax_slope = float(np.percentile(valid_slopes, 98)) if len(valid_slopes) > 0 else 5.0
         vmax_slope = max(vmax_slope, 2.0)
@@ -222,10 +213,34 @@ def create_terrain_map(
             zindex=4
         ).add_to(fmap)
 
-    # 6. Layer: Aspect Map (Compass Direction)
+    # 7. Layer: Water Flow Concentration (Accumulation)
+    if flow_accum is not None:
+        valid_acc = flow_accum[~np.isnan(flow_accum) & (flow_accum > 0)]
+        if len(valid_acc) > 0:
+            log_accum = np.zeros_like(flow_accum)
+            log_accum[flow_accum > 0] = np.log10(flow_accum[flow_accum > 0] + 1.0)
+            log_accum[np.isnan(flow_accum)] = np.nan
+            accum_rgba = array_to_rgba(
+                log_accum,
+                colormap_name="Blues",
+                vmin=0.0,
+                vmax=float(np.nanmax(log_accum)),
+                alpha=layer_opacity
+            )
+            ImageOverlay(
+                image=accum_rgba,
+                bounds=leaflet_bounds,
+                opacity=layer_opacity,
+                name="Water Flow Concentration (Accumulation)",
+                show=is_flow_active,
+                interactive=True,
+                zindex=5
+            ).add_to(fmap)
+
+    # 8. Layer: Aspect Map (Compass Direction)
     if aspect is not None:
         aspect_display = np.copy(aspect)
-        aspect_display[aspect < 0] = np.nan  # flat areas transparent
+        aspect_display[aspect < 0] = np.nan
         aspect_rgba = array_to_rgba(
             aspect_display,
             colormap_name="twilight",
@@ -243,34 +258,64 @@ def create_terrain_map(
             zindex=5
         ).add_to(fmap)
 
-    # 7. Layer: Waterlogging Depressions (Sinks)
+    # 9. Layer: Field Catchments / Sub-Basins
+    if basins_geojson and len(basins_geojson.get("features", [])) > 0:
+        folium.GeoJson(
+            basins_geojson,
+            name="Field Catchments (Sub-Basins)",
+            show=(default_layer in ["Field Catchments (Sub-Basins)", "Field Catchments"]),
+            style_function=lambda feature: {
+                "color": "#a78bfa",
+                "weight": 1.5,
+                "fillColor": "#8b5cf6",
+                "fillOpacity": 0.12,
+                "dashArray": "4, 4"
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=["basin_id", "area_sq_m"],
+                aliases=["Catchment ID:", "Catchment Area (m²):"],
+                style="background-color: #14181F; color: #a78bfa; font-size: 12px; font-weight: bold; border-radius: 4px; padding: 4px;"
+            )
+        ).add_to(fmap)
+
+    # 10. Layer: Waterlogging Depressions (Sinks / Ponding Depth)
     if depression_depth is not None and np.any(depression_depth > 0.0):
-        # Create an eye-catching blue/cyan overlay for depressions
         dep_rgba = np.zeros((depression_depth.shape[0], depression_depth.shape[1], 4), dtype=np.uint8)
         dep_mask = depression_depth > 0.0
         
-        # Color mapping: light blue for shallow (5cm) to deep navy for deep (>30cm)
         max_d = float(np.max(depression_depth)) if np.any(dep_mask) else 0.4
-        max_d = max(max_d, 0.1)
+        max_d = max(max_d, 0.05)
         norm_d = np.clip(depression_depth / max_d, 0.0, 1.0)
         
-        # Blue gradient: R: 20->50, G: 60->190, B: 230, A: 210
-        dep_rgba[dep_mask, 0] = (20 + (1.0 - norm_d[dep_mask]) * 30).astype(np.uint8)
-        dep_rgba[dep_mask, 1] = (60 + (1.0 - norm_d[dep_mask]) * 130).astype(np.uint8)
-        dep_rgba[dep_mask, 2] = 230
-        dep_rgba[dep_mask, 3] = 210
+        dep_rgba[dep_mask, 0] = (15 + (1.0 - norm_d[dep_mask]) * 35).astype(np.uint8)
+        dep_rgba[dep_mask, 1] = (70 + (1.0 - norm_d[dep_mask]) * 130).astype(np.uint8)
+        dep_rgba[dep_mask, 2] = 250
+        dep_rgba[dep_mask, 3] = 215
 
         ImageOverlay(
             image=dep_rgba,
             bounds=leaflet_bounds,
-            opacity=0.85,
-            name="Waterlogging Risk Spots (Ponding)",
+            opacity=0.88,
+            name="Waterlogging Depth Zones (Ponding)",
             show=True,
             interactive=True,
-            zindex=6
+            zindex=7
         ).add_to(fmap)
 
-    # 8. Layer: Vector Contours (GeoJSON)
+    # 11. Layer: Natural Runoff Paths (Extracted Streams)
+    if streams_geojson and len(streams_geojson.get("features", [])) > 0:
+        folium.GeoJson(
+            streams_geojson,
+            name="Natural Runoff Paths (Streams)",
+            show=True,
+            style_function=lambda feature: {
+                "color": "#00f5d4",
+                "weight": 2.5,
+                "opacity": 0.95,
+            }
+        ).add_to(fmap)
+
+    # 12. Layer: Vector Contours (GeoJSON)
     if contour_geojson and len(contour_geojson.get("features", [])) > 0:
         folium.GeoJson(
             contour_geojson,
@@ -288,7 +333,7 @@ def create_terrain_map(
             )
         ).add_to(fmap)
 
-    # 9. Field Perimeter Boundary
+    # 13. Field Perimeter Boundary
     folium.Rectangle(
         bounds=leaflet_bounds,
         color="#ef4444",
@@ -297,7 +342,7 @@ def create_terrain_map(
         name="Field Boundary Extent"
     ).add_to(fmap)
 
-    # 10. Dynamic Elevation Colormap Legend
+    # 14. Dynamic Elevation Colormap Legend
     try:
         cmap = plt.colormaps[colormap_name]
     except (AttributeError, KeyError):
@@ -314,10 +359,10 @@ def create_terrain_map(
     )
     legend.add_to(fmap)
 
-    # 11. Add Top-Right Layer Control Switcher
+    # 15. Add Top-Right Layer Control Switcher
     folium.LayerControl(position="topright", collapsed=False).add_to(fmap)
 
-    # 12. Dark Theme Styling for Leaflet & Branca Legend
+    # 16. Dark Theme Styling for Leaflet & Branca Legend
     dark_css = """
     <style>
         .leaflet-container {
