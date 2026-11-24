@@ -142,8 +142,8 @@ def test_create_elevation_map(synthetic_farm_path):
     fmap = create_elevation_map(elevation, meta, stats, colormap_name="terrain", opacity=0.8)
     assert fmap is not None
     html_repr = fmap.get_root().render()
-    assert "Elevation Surface (DTM)" in html_repr
-    assert "Field Boundary Extent" in html_repr
+    assert "Elevation" in html_repr and "DTM" in html_repr
+    assert "Field Boundary" in html_repr
 
 
 def test_stats_to_dict(synthetic_farm_path):

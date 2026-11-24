@@ -154,6 +154,12 @@ def create_terrain_map(
         control=True
     ).add_to(fmap)
 
+    # Determine which layer to activate initially
+    is_elev_active = default_layer in ["Land Elevation Map", "Elevation Surface (DTM)"]
+    is_slope_active = default_layer in ["Land Slope (% Grade)", "Slope Map (% Grade)"]
+    is_hs_active = default_layer in ["3D Land Shape (Hillshade)", "Hillshade (Shaded Relief)"]
+    is_aspect_active = default_layer in ["Slope Direction (Aspect)", "Aspect Map (Direction)"]
+
     # 3. Layer: Hillshade (Shaded Relief)
     if hillshade is not None:
         valid_mask = ~np.isnan(elevation)
@@ -168,8 +174,8 @@ def create_terrain_map(
             image=hs_rgba,
             bounds=leaflet_bounds,
             opacity=layer_opacity,
-            name="Hillshade (Shaded Relief)",
-            show=(default_layer == "Hillshade (Shaded Relief)"),
+            name="3D Land Shape (Hillshade)",
+            show=is_hs_active,
             interactive=True,
             zindex=2
         ).add_to(fmap)
@@ -186,8 +192,8 @@ def create_terrain_map(
         image=elev_rgba,
         bounds=leaflet_bounds,
         opacity=layer_opacity,
-        name="Elevation Surface (DTM)",
-        show=(default_layer == "Elevation Surface (DTM)"),
+        name="Land Elevation Map (DTM)",
+        show=is_elev_active,
         interactive=True,
         zindex=3
     ).add_to(fmap)
@@ -210,8 +216,8 @@ def create_terrain_map(
             image=slope_rgba,
             bounds=leaflet_bounds,
             opacity=layer_opacity,
-            name="Slope Map (% Grade)",
-            show=(default_layer == "Slope Map (% Grade)"),
+            name="Land Slope Map (% Grade)",
+            show=is_slope_active,
             interactive=True,
             zindex=4
         ).add_to(fmap)
@@ -231,8 +237,8 @@ def create_terrain_map(
             image=aspect_rgba,
             bounds=leaflet_bounds,
             opacity=layer_opacity,
-            name="Aspect Map (Direction)",
-            show=(default_layer == "Aspect Map (Direction)"),
+            name="Slope Direction (Where Water Flows)",
+            show=is_aspect_active,
             interactive=True,
             zindex=5
         ).add_to(fmap)
@@ -258,7 +264,7 @@ def create_terrain_map(
             image=dep_rgba,
             bounds=leaflet_bounds,
             opacity=0.85,
-            name="Waterlogging Depressions (Sinks)",
+            name="Waterlogging Risk Spots (Ponding)",
             show=True,
             interactive=True,
             zindex=6
