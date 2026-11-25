@@ -2,17 +2,20 @@
 Field Drainage Using LiDAR - Phase 3 Web Application
 Intelligent LiDAR-Based Agricultural Field Drainage Planning System
 Interactive Streamlit Dashboard & WhiteboxTools Hydrological Engine
+Optimized for high-performance caching and zero-rerun interactive mapping.
 """
 
 import os
 from pathlib import Path
+from typing import Optional, Tuple, Dict, Any
+import numpy as np
 import streamlit as st
 from streamlit_folium import st_folium
 
-from modules.data_loader import load_raster
-from modules.elevation_analysis import compute_elevation_stats
-from modules.terrain_analysis import compute_terrain_summary, extract_contours_geojson
-from modules.hydrology import run_hydrological_analysis
+from modules.data_loader import load_raster, RasterMetadata
+from modules.elevation_analysis import compute_elevation_stats, ElevationStats
+from modules.terrain_analysis import compute_terrain_summary, extract_contours_geojson, TerrainSummary
+from modules.hydrology import run_hydrological_analysis, HydrologyResult
 from components.maps import create_terrain_map
 
 # Configure Streamlit Page
@@ -108,6 +111,72 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# --- CACHED COMPUTATIONAL PIPELINES ---
+
+@st.cache_data(show_spinner=False)
+def get_cached_elevation_and_stats(
+    source_key: str,
+    file_bytes: Optional[bytes] = None
+) -> Tuple[np.ndarray, RasterMetadata, ElevationStats]:
+    """Caches raster loading and basic elevation statistics."""
+    source = file_bytes if file_bytes is not None else source_key
+    elevation, metadata = load_raster(source)
+    stats = compute_elevation_stats(elevation, metadata)
+    return elevation, metadata, stats
+
+
+@st.cache_data(show_spinner=False)
+def get_cached_terrain_analysis(
+    source_key: str,
+    min_depth_m: float,
+    contour_interval: float,
+    file_bytes: Optional[bytes] = None
+) -> Tuple[TerrainSummary, np.ndarray, np.ndarray, np.ndarray, np.ndarray, Dict[str, Any]]:
+    """Caches slope, aspect, hillshade, and vector contour line extraction."""
+    elevation, metadata, _ = get_cached_elevation_and_stats(source_key, file_bytes)
+    (
+        terrain_summary,
+        slope_deg,
+        slope_pct,
+        aspect,
+        hillshade,
+        _
+    ) = compute_terrain_summary(elevation, metadata, min_depth_m=min_depth_m)
+
+    contour_geojson = extract_contours_geojson(
+        elevation,
+        metadata,
+        interval=contour_interval
+    )
+    return terrain_summary, slope_deg, slope_pct, aspect, hillshade, contour_geojson
+
+
+@st.cache_data(show_spinner=False)
+def get_cached_hydrological_analysis(
+    source_key: str,
+    flow_accum_threshold: float,
+    min_waterlogging_depth_m: float,
+    file_bytes: Optional[bytes] = None
+) -> HydrologyResult:
+    """Caches WhiteboxTools depression filling, flow accumulation, streams, and sub-basins."""
+    if file_bytes is not None:
+        dem_disk_path = Path("data/processed/uploaded_field.tif")
+        dem_disk_path.parent.mkdir(parents=True, exist_ok=True)
+        if not dem_disk_path.exists() or dem_disk_path.stat().st_size != len(file_bytes):
+            with open(dem_disk_path, "wb") as f:
+                f.write(file_bytes)
+        dem_source = str(dem_disk_path)
+    else:
+        dem_source = source_key
+
+    return run_hydrological_analysis(
+        dem_source=dem_source,
+        output_dir="data/processed",
+        flow_accum_threshold=flow_accum_threshold,
+        min_waterlogging_depth_m=min_waterlogging_depth_m
+    )
+
+
 def main():
     # Application Title & Subtitle
     st.markdown('<div class="main-header">🌾 Field Drainage Using LiDAR</div>', unsafe_allow_html=True)
@@ -197,23 +266,25 @@ def main():
         st.caption("© 2026 Varad Patil. All Rights Reserved.")
 
     # Determine which raster source to process
-    raster_source = None
+    source_key = None
+    file_bytes = None
     source_name = ""
 
     if uploaded_file is not None:
-        raster_source = uploaded_file
+        file_bytes = uploaded_file.getvalue()
+        source_key = f"upload_{uploaded_file.name}_{len(file_bytes)}"
         source_name = uploaded_file.name
     elif load_sample or "loaded_sample" in st.session_state:
         st.session_state["loaded_sample"] = True
         if sample_path.exists():
-            raster_source = str(sample_path)
+            source_key = str(sample_path)
             source_name = "Sample 5-Acre Indian Farm (UTM Zone 44N)"
         else:
             st.error(f"Sample data file not found at `{sample_path}`. Run `python scripts/generate_synthetic_farm.py` first.")
             return
 
     # If no data is selected yet, display initial instructions
-    if raster_source is None:
+    if source_key is None:
         st.info("👈 **Get Started:** Click **'Load Sample 5-Acre Farm Demo'** in the sidebar to see an instant demo, or upload your own field elevation file.")
         
         col_info1, col_info2 = st.columns(2)
@@ -235,43 +306,36 @@ def main():
             """)
         return
 
-    # --- PROCESS RASTER, TERRAIN & HYDROLOGY ENGINE ---
+    # --- PROCESS RASTER, TERRAIN & HYDROLOGY ENGINE (CACHED) ---
     try:
-        with st.spinner("Executing WhiteboxTools hydrological engine (D8 Flow, Accumulation, Stream Extraction, Sinks)..."):
-            elevation, metadata = load_raster(raster_source)
-            stats = compute_elevation_stats(elevation, metadata)
+        with st.spinner("Analyzing field topography, slope, and WhiteboxTools hydrology..."):
+            # 1. Cached Elevation & Metadata
+            elevation, metadata, stats = get_cached_elevation_and_stats(
+                source_key=source_key,
+                file_bytes=file_bytes
+            )
+
+            # 2. Cached Terrain Metrics (Slope, Aspect, Hillshade, Contours)
             (
                 terrain_summary,
                 slope_deg,
                 slope_pct,
                 aspect,
                 hillshade,
-                _
-            ) = compute_terrain_summary(elevation, metadata, min_depth_m=sink_threshold_m)
-
-            contour_geojson = extract_contours_geojson(
-                elevation,
-                metadata,
-                interval=contour_interval
+                contour_geojson
+            ) = get_cached_terrain_analysis(
+                source_key=source_key,
+                min_depth_m=sink_threshold_m,
+                contour_interval=contour_interval,
+                file_bytes=file_bytes
             )
 
-            # Determine disk path for WhiteboxTools
-            if isinstance(raster_source, (str, Path)):
-                dem_file_path = str(raster_source)
-            else:
-                temp_dem = Path("data/processed/uploaded_field.tif")
-                temp_dem.parent.mkdir(parents=True, exist_ok=True)
-                with open(temp_dem, "wb") as f:
-                    f.write(raster_source.getvalue() if hasattr(raster_source, "getvalue") else raster_source.read())
-                dem_file_path = str(temp_dem)
-
-            # Execute Phase 3 Hydrological Analysis
-            hydro_result = run_hydrological_analysis(
-                dem_source=dem_file_path,
-                output_dir="data/processed",
+            # 3. Cached WhiteboxTools Hydrology (D8 Flow, Accumulation, Streams, Basins)
+            hydro_result = get_cached_hydrological_analysis(
+                source_key=source_key,
                 flow_accum_threshold=float(flow_accum_threshold),
                 min_waterlogging_depth_m=sink_threshold_m,
-                metadata=metadata
+                file_bytes=file_bytes
             )
     except Exception as e:
         st.error(f"❌ Error during hydrological processing: {str(e)}")
@@ -384,7 +448,7 @@ def main():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- INTERACTIVE MAP VIEWPORT ---
+    # --- INTERACTIVE MAP VIEWPORT (OPTIMIZED WITH RETURNED_OBJECTS=[]) ---
     st.markdown(f"### 🗺️ Interactive Field Drainage & Water Flow Map &bull; *{source_name}*")
     st.caption("💡 Tip: Click the layer icon in the top-right of the map to toggle between Runoff Paths, Flow Accumulation, Waterlogging Zones, DTM, Slope, and Sub-Basins.")
     
@@ -406,7 +470,13 @@ def main():
             layer_opacity=opacity_slider,
             default_layer=default_layer_choice
         )
-        st_folium(fmap, width="100%", height=570)
+        st_folium(
+            fmap,
+            width="100%",
+            height=570,
+            returned_objects=[],
+            key="field_drainage_folium_map"
+        )
 
     # --- DETAILED METADATA & DATA TABLE EXPANDER ---
     with st.expander("🔍 Technical Geospatial & Hydrological Metrics (Advanced)"):
