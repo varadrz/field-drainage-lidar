@@ -92,6 +92,9 @@ def create_terrain_map(
     flow_accum: Optional[np.ndarray] = None,
     streams_geojson: Optional[Dict[str, Any]] = None,
     basins_geojson: Optional[Dict[str, Any]] = None,
+    drainage_routes: Optional[List[Any]] = None,
+    priority_sinks: Optional[List[Any]] = None,
+    candidate_outlets: Optional[List[Any]] = None,
     colormap_name: str = "terrain",
     layer_opacity: float = 0.75,
     default_layer: str = "Land Elevation Map"
@@ -333,7 +336,93 @@ def create_terrain_map(
             )
         ).add_to(fmap)
 
-    # 13. Field Perimeter Boundary
+    # 13. Layer: Priority Waterlogging Sinks
+    if priority_sinks:
+        sink_group = folium.FeatureGroup(name="Priority Waterlogging Sinks", show=True)
+        for sink in priority_sinks:
+            lat, lon = sink.pit_coord_wgs84
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=8,
+                color="#00f5d4",
+                weight=2,
+                fill=True,
+                fill_color="#00f5d4",
+                fill_opacity=0.85,
+                tooltip=(
+                    f"<b>Priority Sink {sink.sink_id} ({sink.severity})</b><br>"
+                    f"Trapped Volume: {sink.volume_m3:,.1f} m³<br>"
+                    f"Max Depth: {sink.max_depth_cm:.1f} cm<br>"
+                    f"Area: {sink.area_m2:,.0f} m²"
+                )
+            ).add_to(sink_group)
+        sink_group.add_to(fmap)
+
+    # 14. Layer: Candidate Field Outlets
+    if candidate_outlets:
+        outlet_group = folium.FeatureGroup(name="Candidate Field Outlets", show=True)
+        for out in candidate_outlets:
+            lat, lon = out.coord_wgs84
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=7,
+                color="#ffffff",
+                weight=2,
+                fill=True,
+                fill_color="#38bdf8",
+                fill_opacity=0.9,
+                tooltip=(
+                    f"<b>Field Outlet #{out.outlet_id}</b><br>"
+                    f"Type: {out.outlet_type.replace('_', ' ').title()}<br>"
+                    f"Ground Elevation: {out.elevation_m:.2f} m"
+                )
+            ).add_to(outlet_group)
+        outlet_group.add_to(fmap)
+
+    # 15. Layer: Proposed Surface Drainage Routes
+    if drainage_routes:
+        routes_group = folium.FeatureGroup(name="Proposed Surface Drainage Routes", show=True)
+        for r in drainage_routes:
+            if r.is_recommended:
+                color = "#2ecc71"  # Emerald Green
+                weight = 5
+                dash = None
+                label = f"⭐ {r.route_id} (Recommended / Optimal)"
+            elif r.feasibility_rank == "Moderate Excavation":
+                color = "#f39c12"  # Amber Orange
+                weight = 3.5
+                dash = "6, 6"
+                label = f"{r.route_id} (Moderate Excavation)"
+            else:
+                color = "#e74c3c"  # Crimson Red
+                weight = 3.5
+                dash = "4, 8"
+                label = f"{r.route_id} (High Excavation)"
+
+            popup_html = f"""
+            <div style="font-family: sans-serif; font-size: 12px; color: #14181f; padding: 4px; min-width: 180px;">
+                <b style="color: {color}; font-size: 13px;">{label}</b><br>
+                <b>Length:</b> {r.length_m:,.1f} m<br>
+                <b>Bed Slope:</b> {r.bed_slope_pct:.2f}%<br>
+                <b>Max Trench Depth:</b> {r.max_cut_depth_m:.2f} m<br>
+                <b>Avg Trench Depth:</b> {r.avg_cut_depth_m:.2f} m<br>
+                <b>Excavation Volume:</b> {r.earthwork_vol_m3:,.1f} m³<br>
+                <b>Rating:</b> {r.feasibility_rank}
+            </div>
+            """
+
+            folium.PolyLine(
+                locations=r.path_coords_wgs84,
+                color=color,
+                weight=weight,
+                opacity=0.95,
+                dash_array=dash,
+                tooltip=f"{label} &bull; {r.length_m:.1f} m, Max Cut: {r.max_cut_depth_m:.2f} m",
+                popup=folium.Popup(popup_html, max_width=300)
+            ).add_to(routes_group)
+        routes_group.add_to(fmap)
+
+    # 16. Field Perimeter Boundary
     folium.Rectangle(
         bounds=leaflet_bounds,
         color="#ef4444",

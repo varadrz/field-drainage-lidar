@@ -16,11 +16,13 @@ from modules.data_loader import load_raster, RasterMetadata
 from modules.elevation_analysis import compute_elevation_stats, ElevationStats
 from modules.terrain_analysis import compute_terrain_summary, extract_contours_geojson, TerrainSummary
 from modules.hydrology import run_hydrological_analysis, HydrologyResult
+from modules.drainage_recommendation import generate_drainage_plan, DrainagePlanResult, DrainageRoute
 from components.maps import create_terrain_map
+from components.elevation_profile import create_trench_profile_figure
 
 # Configure Streamlit Page
 st.set_page_config(
-    page_title="Field Drainage Using LiDAR | Hydrological Modeling",
+    page_title="Field Drainage Using LiDAR | Drainage Recommendation Engine",
     page_icon="🌾",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -177,11 +179,45 @@ def get_cached_hydrological_analysis(
     )
 
 
+@st.cache_data(show_spinner=False)
+def get_cached_drainage_plan(
+    source_key: str,
+    flow_accum_threshold: float,
+    min_waterlogging_depth_m: float,
+    min_waterlogging_area_m2: float,
+    min_bed_slope_pct: float,
+    ditch_bottom_width_m: float,
+    file_bytes: Optional[bytes] = None
+) -> DrainagePlanResult:
+    """Caches candidate outlet detection, least-cost routing, and earthwork calculations."""
+    hydro_res = get_cached_hydrological_analysis(
+        source_key=source_key,
+        flow_accum_threshold=flow_accum_threshold,
+        min_waterlogging_depth_m=min_waterlogging_depth_m,
+        file_bytes=file_bytes
+    )
+    if file_bytes is not None:
+        dem_disk_path = Path("data/processed/uploaded_field.tif")
+        dem_source = str(dem_disk_path)
+    else:
+        dem_source = source_key
+
+    return generate_drainage_plan(
+        dem_source=dem_source,
+        hydrology_result=hydro_res,
+        output_dir="data/processed",
+        min_waterlogging_depth_m=min_waterlogging_depth_m,
+        min_waterlogging_area_m2=min_waterlogging_area_m2,
+        min_bed_slope_pct=min_bed_slope_pct,
+        ditch_bottom_width_m=ditch_bottom_width_m
+    )
+
+
 def main():
     # Application Title & Subtitle
     st.markdown('<div class="main-header">🌾 Field Drainage Using LiDAR</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="sub-header">Smart Farm Drainage Assistant &bull; Phase 3: Hydrological Modeling &amp; Water Flow Concentration</div>',
+        '<div class="sub-header">Smart Farm Drainage Assistant &bull; Phase 4: Drainage Recommendation Engine &amp; Surface Trench Planner</div>',
         unsafe_allow_html=True
     )
 
@@ -204,6 +240,7 @@ def main():
         default_layer_choice = st.selectbox(
             "Main Map Layer",
             options=[
+                "Proposed Surface Drainage Routes",
                 "Land Elevation Map",
                 "Natural Runoff Paths (Streams)",
                 "Water Flow Concentration",
@@ -231,6 +268,36 @@ def main():
             value=0.75,
             step=0.05,
             help="Adjust transparency to blend elevation data over satellite imagery."
+        )
+
+        st.markdown("---")
+        st.subheader("🚜 Drainage Trench Design")
+
+        min_ditch_slope_pct = st.slider(
+            "Minimum Trench Bed Grade (%)",
+            min_value=0.1,
+            max_value=1.0,
+            value=0.2,
+            step=0.05,
+            help="Minimum downhill hydraulic gradient along the ditch invert bed to guarantee self-cleansing gravity drainage without uphill backwater."
+        )
+
+        ditch_bottom_width = st.slider(
+            "Ditch Bed Width (m)",
+            min_value=0.3,
+            max_value=1.5,
+            value=0.5,
+            step=0.1,
+            help="Excavated base width of trapezoidal drainage channel (standard farm mini-excavator bucket is ~0.5m)."
+        )
+
+        min_sink_area = st.slider(
+            "Ponding Hotspot Min Area (m²)",
+            min_value=5,
+            max_value=50,
+            value=10,
+            step=5,
+            help="Minimum surface puddle area required to generate an automated engineered drainage route."
         )
 
         st.markdown("---")
@@ -337,8 +404,19 @@ def main():
                 min_waterlogging_depth_m=sink_threshold_m,
                 file_bytes=file_bytes
             )
+
+            # 4. Cached Drainage Recommendation & Surface Trench Routes (Phase 4)
+            drainage_plan = get_cached_drainage_plan(
+                source_key=source_key,
+                flow_accum_threshold=float(flow_accum_threshold),
+                min_waterlogging_depth_m=sink_threshold_m,
+                min_waterlogging_area_m2=float(min_sink_area),
+                min_bed_slope_pct=float(min_ditch_slope_pct),
+                ditch_bottom_width_m=float(ditch_bottom_width),
+                file_bytes=file_bytes
+            )
     except Exception as e:
-        st.error(f"❌ Error during hydrological processing: {str(e)}")
+        st.error(f"❌ Error during hydrological and drainage processing: {str(e)}")
         return
 
     # --- CRS ALERT CHECKS ---
@@ -450,7 +528,7 @@ def main():
 
     # --- INTERACTIVE MAP VIEWPORT (OPTIMIZED WITH RETURNED_OBJECTS=[]) ---
     st.markdown(f"### 🗺️ Interactive Field Drainage & Water Flow Map &bull; *{source_name}*")
-    st.caption("💡 Tip: Click the layer icon in the top-right of the map to toggle between Runoff Paths, Flow Accumulation, Waterlogging Zones, DTM, Slope, and Sub-Basins.")
+    st.caption("💡 Tip: Click the layer icon in the top-right of the map to toggle between Proposed Drainage Routes, Runoff Paths, Waterlogging Zones, DTM, Slope, and Sub-Basins.")
     
     with st.spinner("Rendering interactive field map..."):
         fmap = create_terrain_map(
@@ -466,6 +544,9 @@ def main():
             flow_accum=hydro_result.flow_accum_array,
             streams_geojson=hydro_result.streams_geojson,
             basins_geojson=hydro_result.basins_geojson,
+            drainage_routes=drainage_plan.routes,
+            priority_sinks=drainage_plan.priority_sinks,
+            candidate_outlets=drainage_plan.candidate_outlets,
             colormap_name=colormap_choice,
             layer_opacity=opacity_slider,
             default_layer=default_layer_choice
@@ -477,6 +558,115 @@ def main():
             returned_objects=[],
             key="field_drainage_folium_map"
         )
+
+    # --- PHASE 4 DRAINAGE RECOMMENDATIONS & TRENCH PLANNER ---
+    st.markdown("### 🚜 Recommended Surface Drainage Channels (Phase 4)")
+    
+    if drainage_plan.best_route:
+        best_r = drainage_plan.best_route
+        p1, p2, p3, p4, p5 = st.columns(5)
+        
+        with p1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Recommended Channel</div>
+                <div class="metric-value">{best_r.route_id}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with p2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Channel Length</div>
+                <div class="metric-value">{best_r.length_m:.1f} m</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with p3:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Bed Invert Grade</div>
+                <div class="metric-value">{best_r.bed_slope_pct:.2f}%</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with p4:
+            st.markdown(f"""
+            <div class="metric-card-alert">
+                <div class="metric-label">Max Trench Depth</div>
+                <div class="metric-value-alert">{best_r.max_cut_depth_m:.2f} m</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with p5:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Excavation Earthwork</div>
+                <div class="metric-value">{best_r.earthwork_vol_m3:,.1f} m³</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Tabbed interface for Cross-Section Profile & Route Comparison
+        tab_profile, tab_compare, tab_sinks = st.tabs([
+            "📈 Longitudinal Trench Elevation Cross-Section",
+            "📋 Candidate Route Comparison & Earthwork Table",
+            "🌊 Identified Waterlogging Depressions (Sinks)"
+        ])
+
+        with tab_profile:
+            # Route selector if multiple candidate routes exist
+            route_options = {r.route_id: r for r in drainage_plan.routes}
+            selected_route_id = st.selectbox(
+                "Select Drainage Route for Longitudinal Cross-Section:",
+                options=list(route_options.keys()),
+                index=0,
+                format_func=lambda rid: f"{rid} {'⭐ [Recommended / Optimal]' if route_options[rid].is_recommended else ''} (Length: {route_options[rid].length_m:.1f} m, Max Cut: {route_options[rid].max_cut_depth_m:.2f} m)"
+            )
+            selected_route = route_options[selected_route_id]
+            fig = create_trench_profile_figure(selected_route)
+            st.pyplot(fig, use_container_width=True)
+            st.caption(
+                f"ℹ️ **Profile Notes for {selected_route.route_id}:** Starting at waterlogging pit invert ({selected_route.start_elev_m:.2f} m), "
+                f"the trench maintains a minimum hydraulic gravity bed grade of {selected_route.bed_slope_pct:.2f}% down to the field outlet "
+                f"(outlet bed: {selected_route.outlet_bed_elev_m:.2f} m, ground: {selected_route.end_elev_m:.2f} m). "
+                f"Maximum excavation cut depth is {selected_route.max_cut_depth_m:.2f} m with an average depth of {selected_route.avg_cut_depth_m:.2f} m."
+            )
+
+        with tab_compare:
+            st.markdown("#### Candidate Surface Drainage Routes Comparison")
+            table_rows = []
+            for r in drainage_plan.routes:
+                table_rows.append({
+                    "Route ID": r.route_id,
+                    "Target Outlet": f"Outlet #{r.outlet_id}",
+                    "Status": "⭐ Recommended" if r.is_recommended else "Alternative",
+                    "Total Length (m)": f"{r.length_m:,.1f}",
+                    "Ground Slope (%)": f"{r.avg_slope_pct:.2f}%",
+                    "Bed Invert Grade (%)": f"{r.bed_slope_pct:.2f}%",
+                    "Max Cut Depth (m)": f"{r.max_cut_depth_m:.2f}",
+                    "Avg Cut Depth (m)": f"{r.avg_cut_depth_m:.2f}",
+                    "Excavation Volume (m³)": f"{r.earthwork_vol_m3:,.1f}",
+                    "Feasibility": r.feasibility_rank
+                })
+            st.table(table_rows)
+
+        with tab_sinks:
+            st.markdown("#### Waterlogging Sinks & Pockets Prioritization")
+            sink_rows = []
+            for s in drainage_plan.priority_sinks:
+                sink_rows.append({
+                    "Sink Priority": f"Priority #{s.sink_id}",
+                    "Ponding Severity": s.severity,
+                    "Surface Area (m²)": f"{s.area_m2:,.0f}",
+                    "Surface Area (Acres)": f"{s.area_m2 / 4046.8564:,.2f}",
+                    "Trapped Water Volume (m³)": f"{s.volume_m3:,.1f}",
+                    "Max Water Depth (cm)": f"{s.max_depth_cm:.1f}",
+                    "Avg Water Depth (cm)": f"{s.mean_depth_cm:.1f}",
+                    "GPS Coordinates": f"{s.pit_coord_wgs84[0]:.6f}, {s.pit_coord_wgs84[1]:.6f}"
+                })
+            st.table(sink_rows)
+    else:
+        st.info("ℹ️ No critical waterlogging depressions requiring artificial surface drainage were detected at the current thresholds.")
 
     # --- DETAILED METADATA & DATA TABLE EXPANDER ---
     with st.expander("🔍 Technical Geospatial & Hydrological Metrics (Advanced)"):
@@ -505,8 +695,8 @@ def main():
             st.write("**Slope & Relief Profile:**")
             st.json(terrain_summary.to_dict())
         with c4:
-            st.write("**WhiteboxTools Hydrology Profile:**")
-            st.json(hydro_result.to_dict())
+            st.write("**Drainage Recommendation Profile:**")
+            st.json(drainage_plan.to_dict())
 
 
 if __name__ == "__main__":
