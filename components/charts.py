@@ -1,0 +1,219 @@
+"""
+Interactive 3D Field Terrain Component
+Generates 3D surface visualizations of agricultural topography using Plotly.
+Supports automatic raster downsampling for smooth web rendering, user-configurable
+vertical exaggeration, 3D drainage route line overlays, and interactive rainfall/flooding simulation.
+Styled in a minimalist dark theme.
+"""
+
+from typing import Optional, List, Tuple
+import numpy as np
+import plotly.graph_objects as go
+
+from modules.data_loader import RasterMetadata
+from modules.drainage_recommendation import DrainageRoute
+
+
+def create_3d_terrain_figure(
+    elevation: np.ndarray,
+    metadata: RasterMetadata,
+    selected_route: Optional[DrainageRoute] = None,
+    vertical_exaggeration: float = 10.0,
+    flood_depth_m: float = 0.0,
+    colormap: str = "Viridis",
+    max_grid: int = 200
+) -> go.Figure:
+    """
+    Constructs an interactive 3D terrain surface figure.
+    
+    Args:
+        elevation: 2D numpy array of elevations in meters.
+        metadata: RasterMetadata holding spatial resolution and dimensions.
+        selected_route: Optional DrainageRoute to overlay in 3D.
+        vertical_exaggeration: Multiplier for Z-axis relief (default 10x).
+        flood_depth_m: Simulated water height in meters above minimum elevation.
+        colormap: Plotly colorscale (e.g. 'Viridis', 'Earth', 'Turbo', 'YlGnBu').
+        max_grid: Maximum resolution along either dimension to preserve browser FPS.
+        
+    Returns:
+        Plotly go.Figure object ready for st.plotly_chart().
+    """
+    nrows, ncols = elevation.shape
+
+    # 1. Automatic Downsampling for high-performance browser rendering
+    step = max(1, int(np.ceil(max(nrows, ncols) / max_grid)))
+    elev_sub = elevation[::step, ::step].copy()
+    sub_nrows, sub_ncols = elev_sub.shape
+
+    # Handle NoData / NaNs
+    valid_mask = ~np.isnan(elev_sub)
+    min_elev = float(np.nanmin(elev_sub[valid_mask])) if np.any(valid_mask) else 0.0
+    max_elev = float(np.nanmax(elev_sub[valid_mask])) if np.any(valid_mask) else 1.0
+    elev_sub[~valid_mask] = min_elev
+
+    # 2. Metric Grid Coordinates (distance in meters from origin)
+    x_coords = np.arange(0, ncols, step) * metadata.res_x
+    y_coords = np.arange(0, nrows, step) * metadata.res_y
+
+    # Truncate coordinates to match downsampled slice shape if necessary
+    x_coords = x_coords[:sub_ncols]
+    y_coords = y_coords[:sub_nrows]
+
+    # 3. Apply Vertical Exaggeration
+    # Real subtle farm slopes (e.g. 0.5% grade) are stretched vertically for visual clarity
+    z_scaled = min_elev + (elev_sub - min_elev) * vertical_exaggeration
+
+    fig = go.Figure()
+
+    # 4. 3D Terrain Surface Trace
+    surface_trace = go.Surface(
+        x=x_coords,
+        y=y_coords,
+        z=z_scaled,
+        customdata=elev_sub,
+        colorscale=colormap,
+        cmin=float(np.nanmin(z_scaled)),
+        cmax=float(np.nanmax(z_scaled)),
+        colorbar=dict(
+            title=dict(
+                text=f"Elevation (m MSL)<br><sub>{vertical_exaggeration}× Exaggeration</sub>",
+                font=dict(color="#F0F4F8", size=11)
+            ),
+            tickfont=dict(color="#94A3B8", size=10),
+            len=0.7,
+            thickness=14,
+            x=1.02
+        ),
+        hovertemplate=(
+            "<b>Field Topography</b><br>"
+            "Easting: %{x:.1f} m<br>"
+            "Northing: %{y:.1f} m<br>"
+            "Real Elevation: %{customdata:.2f} m MSL<br>"
+            "<extra></extra>"
+        ),
+        lighting=dict(
+            ambient=0.45,
+            diffuse=0.8,
+            specular=0.2,
+            roughness=0.6,
+            fresnel=0.1
+        ),
+        name="Field Terrain"
+    )
+    fig.add_trace(surface_trace)
+
+    # 5. Optional Simulated Rainfall / Flooding Plane
+    if flood_depth_m > 0.0:
+        real_water_level = min_elev + flood_depth_m
+        scaled_water_level = min_elev + flood_depth_m * vertical_exaggeration
+        water_z = np.full_like(z_scaled, scaled_water_level)
+
+        water_trace = go.Surface(
+            x=x_coords,
+            y=y_coords,
+            z=water_z,
+            colorscale=[[0, "rgba(56, 189, 248, 0.55)"], [1, "rgba(56, 189, 248, 0.55)"]],
+            showscale=False,
+            opacity=0.6,
+            name=f"Flood Water (+{flood_depth_m:.2f} m)",
+            hovertemplate=(
+                f"<b>Simulated Water Surface</b><br>"
+                f"Water Level: {real_water_level:.2f} m MSL (+{flood_depth_m:.2f} m)<br>"
+                f"<extra></extra>"
+            )
+        )
+        fig.add_trace(water_trace)
+
+    # 6. Overlay Recommended Drainage Route in 3D
+    if selected_route is not None and selected_route.path_rc:
+        route_rc = np.array(selected_route.path_rc)
+        route_x = route_rc[:, 1] * metadata.res_x
+        route_y = route_rc[:, 0] * metadata.res_y
+
+        route_real_z = np.array([float(elevation[r, c]) for r, c in selected_route.path_rc])
+        # Lift line slightly above terrain so it does not clip through the surface mesh
+        route_scaled_z = min_elev + (route_real_z - min_elev) * vertical_exaggeration + (0.08 * vertical_exaggeration)
+
+        route_trace = go.Scatter3d(
+            x=route_x,
+            y=route_y,
+            z=route_scaled_z,
+            customdata=np.stack([route_real_z, np.array(selected_route.cut_depth_profile_m)], axis=-1),
+            mode="lines+markers",
+            line=dict(
+                color="#00F5D4",
+                width=6
+            ),
+            marker=dict(
+                size=3.5,
+                color="#2ECC71",
+                symbol="circle"
+            ),
+            name=f"Trench: {selected_route.route_id}",
+            hovertemplate=(
+                f"<b>{selected_route.route_id}</b><br>"
+                f"Easting: %{{x:.1f}} m<br>"
+                f"Northing: %{{y:.1f}} m<br>"
+                f"Ground Elevation: %{{customdata[0]:.2f}} m<br>"
+                f"Trench Cut Depth: %{{customdata[1]:.2f}} m<br>"
+                f"<extra></extra>"
+            )
+        )
+        fig.add_trace(route_trace)
+
+    # 7. Layout & Minimalist Dark Theme
+    aspect_ratio_y = (nrows / ncols) if ncols > 0 else 1.0
+    aspect_ratio_z = max(0.2, min(0.6, 0.35 * (vertical_exaggeration / 10.0)))
+
+    fig.update_layout(
+        paper_bgcolor="#0B0D10",
+        plot_bgcolor="#0B0D10",
+        title=dict(
+            text=f"Interactive 3D Field Model &bull; {vertical_exaggeration:.0f}× Vertical Relief",
+            font=dict(color="#F0F4F8", size=14)
+        ),
+        margin=dict(l=0, r=0, b=0, t=35),
+        scene=dict(
+            bgcolor="#0B0D10",
+            xaxis=dict(
+                title="Easting (m)",
+                color="#94A3B8",
+                gridcolor="#1F2937",
+                showbackground=True,
+                backgroundcolor="#0E1217"
+            ),
+            yaxis=dict(
+                title="Northing (m)",
+                color="#94A3B8",
+                gridcolor="#1F2937",
+                showbackground=True,
+                backgroundcolor="#0E1217"
+            ),
+            zaxis=dict(
+                title=f"Elevation ({vertical_exaggeration:.0f}×)",
+                color="#94A3B8",
+                gridcolor="#1F2937",
+                showbackground=True,
+                backgroundcolor="#0E1217"
+            ),
+            aspectmode="manual",
+            aspectratio=dict(
+                x=1.0,
+                y=aspect_ratio_y,
+                z=aspect_ratio_z
+            ),
+            camera=dict(
+                eye=dict(x=-1.35, y=-1.45, z=1.1)
+            )
+        ),
+        legend=dict(
+            font=dict(color="#F0F4F8", size=11),
+            bgcolor="rgba(20, 24, 31, 0.8)",
+            bordercolor="#2D3748",
+            borderwidth=1,
+            x=0.02,
+            y=0.98
+        )
+    )
+
+    return fig

@@ -19,6 +19,7 @@ from modules.hydrology import run_hydrological_analysis, HydrologyResult
 from modules.drainage_recommendation import generate_drainage_plan, DrainagePlanResult, DrainageRoute
 from components.maps import create_terrain_map
 from components.elevation_profile import create_trench_profile_figure
+from components.charts import create_3d_terrain_figure
 
 # Configure Streamlit Page
 st.set_page_config(
@@ -268,6 +269,12 @@ def main():
             value=0.75,
             step=0.05,
             help="Adjust transparency to blend elevation data over satellite imagery."
+        )
+
+        animate_flow_toggle = st.toggle(
+            "🌊 Animated Water Flow on Map",
+            value=True,
+            help="Show animated water pulses flowing along channels down toward outlets. Speed corresponds to route slope."
         )
 
         st.markdown("---")
@@ -549,7 +556,8 @@ def main():
             candidate_outlets=drainage_plan.candidate_outlets,
             colormap_name=colormap_choice,
             layer_opacity=opacity_slider,
-            default_layer=default_layer_choice
+            default_layer=default_layer_choice,
+            animate_flow=animate_flow_toggle
         )
         st_folium(
             fmap,
@@ -606,20 +614,74 @@ def main():
             </div>
             """, unsafe_allow_html=True)
 
-        # Tabbed interface for Cross-Section Profile & Route Comparison
-        tab_profile, tab_compare, tab_sinks = st.tabs([
+        # Tabbed interface for 3D View, Cross-Section Profile & Route Comparison
+        tab_3d, tab_profile, tab_compare, tab_sinks = st.tabs([
+            "🌐 Interactive 3D Field Terrain",
             "📈 Longitudinal Trench Elevation Cross-Section",
             "📋 Candidate Route Comparison & Earthwork Table",
             "🌊 Identified Waterlogging Depressions (Sinks)"
         ])
 
+        route_options = {r.route_id: r for r in drainage_plan.routes}
+
+        with tab_3d:
+            st.markdown("#### 🌐 Interactive 3D Bare-Earth Terrain Model")
+            c_3d_1, c_3d_2, c_3d_3, c_3d_4 = st.columns(4)
+            with c_3d_1:
+                selected_route_id_3d = st.selectbox(
+                    "3D Route Overlay:",
+                    options=list(route_options.keys()),
+                    index=0,
+                    key="select_route_3d",
+                    format_func=lambda rid: f"{rid} {'⭐ [Recommended]' if route_options[rid].is_recommended else ''}"
+                )
+            with c_3d_2:
+                vertical_exagg = st.slider(
+                    "Vertical Relief Exaggeration",
+                    min_value=1.0,
+                    max_value=25.0,
+                    value=10.0,
+                    step=1.0,
+                    help="Magnifies vertical relief to make micro-topography, bunds, and waterlogging hollows clearly visible in 3D."
+                )
+            with c_3d_3:
+                flood_depth_sim = st.slider(
+                    "Simulate Rainfall / Flooding (m)",
+                    min_value=0.0,
+                    max_value=1.5,
+                    value=0.0,
+                    step=0.05,
+                    help="Simulates water accumulation by raising a translucent water plane across the field."
+                )
+            with c_3d_4:
+                colormap_3d = st.selectbox(
+                    "3D Color Palette",
+                    options=["Viridis", "Earth", "Turbo", "YlGnBu", "Plasma"],
+                    index=0
+                )
+
+            selected_route_3d = route_options[selected_route_id_3d]
+            fig_3d = create_3d_terrain_figure(
+                elevation=elevation,
+                metadata=metadata,
+                selected_route=selected_route_3d,
+                vertical_exaggeration=vertical_exagg,
+                flood_depth_m=flood_depth_sim,
+                colormap=colormap_3d
+            )
+            st.plotly_chart(fig_3d, use_container_width=True)
+            st.caption(
+                "💡 **3D Navigation:** Left-click & drag to rotate; right-click & drag or scroll to zoom; "
+                "double-click to reset view. The selected drainage channel is highlighted in bright cyan."
+            )
+
         with tab_profile:
             # Route selector if multiple candidate routes exist
-            route_options = {r.route_id: r for r in drainage_plan.routes}
             selected_route_id = st.selectbox(
                 "Select Drainage Route for Longitudinal Cross-Section:",
                 options=list(route_options.keys()),
                 index=0,
+                key="select_route_profile",
                 format_func=lambda rid: f"{rid} {'⭐ [Recommended / Optimal]' if route_options[rid].is_recommended else ''} (Length: {route_options[rid].length_m:.1f} m, Max Cut: {route_options[rid].max_cut_depth_m:.2f} m)"
             )
             selected_route = route_options[selected_route_id]

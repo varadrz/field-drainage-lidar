@@ -16,6 +16,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(Path.cwd() / ".cache" / "matplotlib"))
 import numpy as np
 import folium
 from folium.raster_layers import ImageOverlay
+from folium.plugins import AntPath
 import branca.colormap as cm
 import matplotlib.pyplot as plt
 
@@ -97,7 +98,8 @@ def create_terrain_map(
     candidate_outlets: Optional[List[Any]] = None,
     colormap_name: str = "terrain",
     layer_opacity: float = 0.75,
-    default_layer: str = "Land Elevation Map"
+    default_layer: str = "Land Elevation Map",
+    animate_flow: bool = True
 ) -> folium.Map:
     """
     Renders an interactive multi-layer GIS map with Elevation, Slope, Aspect,
@@ -307,16 +309,35 @@ def create_terrain_map(
 
     # 11. Layer: Natural Runoff Paths (Extracted Streams)
     if streams_geojson and len(streams_geojson.get("features", [])) > 0:
-        folium.GeoJson(
-            streams_geojson,
-            name="Natural Runoff Paths (Streams)",
-            show=True,
-            style_function=lambda feature: {
-                "color": "#00f5d4",
-                "weight": 2.5,
-                "opacity": 0.95,
-            }
-        ).add_to(fmap)
+        if animate_flow:
+            stream_group = folium.FeatureGroup(name="Natural Runoff Paths (Streams)", show=True)
+            for feat in streams_geojson["features"]:
+                geom = feat.get("geometry", {})
+                if geom.get("type") == "LineString":
+                    coords = geom.get("coordinates", [])
+                    lat_lons = [[c[1], c[0]] for c in coords]
+                    if len(lat_lons) >= 2:
+                        AntPath(
+                            locations=lat_lons,
+                            delay=900,
+                            weight=2.5,
+                            color="#00f5d4",
+                            pulse_color="#ffffff",
+                            dash_array=[8, 16],
+                            opacity=0.9
+                        ).add_to(stream_group)
+            stream_group.add_to(fmap)
+        else:
+            folium.GeoJson(
+                streams_geojson,
+                name="Natural Runoff Paths (Streams)",
+                show=True,
+                style_function=lambda feature: {
+                    "color": "#00f5d4",
+                    "weight": 2.5,
+                    "opacity": 0.95,
+                }
+            ).add_to(fmap)
 
     # 12. Layer: Vector Contours (GeoJSON)
     if contour_geojson and len(contour_geojson.get("features", [])) > 0:
@@ -385,19 +406,27 @@ def create_terrain_map(
         for r in drainage_routes:
             if r.is_recommended:
                 color = "#2ecc71"  # Emerald Green
+                pulse_color = "#00f5d4"  # Cyan Pulse
                 weight = 5
                 dash = None
                 label = f"⭐ {r.route_id} (Recommended / Optimal)"
             elif r.feasibility_rank == "Moderate Excavation":
                 color = "#f39c12"  # Amber Orange
+                pulse_color = "#fef08a"  # Light Yellow Pulse
                 weight = 3.5
                 dash = "6, 6"
                 label = f"{r.route_id} (Moderate Excavation)"
             else:
                 color = "#e74c3c"  # Crimson Red
+                pulse_color = "#fca5a5"  # Pinkish Pulse
                 weight = 3.5
                 dash = "4, 8"
                 label = f"{r.route_id} (High Excavation)"
+
+            # Tie animation delay (speed) to bed invert slope (%)
+            # Steeper routes flow faster (lower delay in ms)
+            slope = max(0.1, abs(getattr(r, "bed_slope_pct", getattr(r, "avg_slope_pct", 0.5))))
+            pulse_delay = int(np.clip(1800.0 / (1.0 + slope * 2.5), 350, 2200))
 
             popup_html = f"""
             <div style="font-family: sans-serif; font-size: 12px; color: #14181f; padding: 4px; min-width: 180px;">
@@ -411,15 +440,28 @@ def create_terrain_map(
             </div>
             """
 
-            folium.PolyLine(
-                locations=r.path_coords_wgs84,
-                color=color,
-                weight=weight,
-                opacity=0.95,
-                dash_array=dash,
-                tooltip=f"{label} &bull; {r.length_m:.1f} m, Max Cut: {r.max_cut_depth_m:.2f} m",
-                popup=folium.Popup(popup_html, max_width=300)
-            ).add_to(routes_group)
+            if animate_flow:
+                AntPath(
+                    locations=r.path_coords_wgs84,
+                    delay=pulse_delay,
+                    weight=weight,
+                    color=color,
+                    pulse_color=pulse_color,
+                    dash_array=[10, 20],
+                    opacity=0.95,
+                    tooltip=f"{label} &bull; {r.length_m:.1f} m, Bed Slope: {r.bed_slope_pct:.2f}% (Flow: {pulse_delay}ms)",
+                    popup=folium.Popup(popup_html, max_width=300)
+                ).add_to(routes_group)
+            else:
+                folium.PolyLine(
+                    locations=r.path_coords_wgs84,
+                    color=color,
+                    weight=weight,
+                    opacity=0.95,
+                    dash_array=dash,
+                    tooltip=f"{label} &bull; {r.length_m:.1f} m, Max Cut: {r.max_cut_depth_m:.2f} m",
+                    popup=folium.Popup(popup_html, max_width=300)
+                ).add_to(routes_group)
         routes_group.add_to(fmap)
 
     # 16. Field Perimeter Boundary
