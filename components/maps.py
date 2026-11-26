@@ -96,6 +96,8 @@ def create_terrain_map(
     drainage_routes: Optional[List[Any]] = None,
     priority_sinks: Optional[List[Any]] = None,
     candidate_outlets: Optional[List[Any]] = None,
+    extracted_ditches_geojson: Optional[Dict[str, Any]] = None,
+    reconnected_culverts_geojson: Optional[Dict[str, Any]] = None,
     colormap_name: str = "terrain",
     layer_opacity: float = 0.75,
     default_layer: str = "Land Elevation Map",
@@ -464,7 +466,44 @@ def create_terrain_map(
                 ).add_to(routes_group)
         routes_group.add_to(fmap)
 
-    # 16. Field Perimeter Boundary
+    # 16. Layer: Extracted Open Ditches (Roelens et al.)
+    if extracted_ditches_geojson and len(extracted_ditches_geojson.get("features", [])) > 0:
+        folium.GeoJson(
+            extracted_ditches_geojson,
+            name="Extracted Ditches (Roelens LiDAR)",
+            show=True,
+            style_function=lambda feature: {
+                "color": "#06b6d4",
+                "weight": 3.5,
+                "opacity": 0.95,
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=["segment_id", "length_m", "start_elevation_m", "end_elevation_m"],
+                aliases=["Ditch Segment:", "Length (m):", "Start Elev (m):", "End Elev (m):"],
+                style="background-color: #14181F; color: #06b6d4; font-size: 12px; font-weight: bold; border-radius: 4px; padding: 4px;"
+            )
+        ).add_to(fmap)
+
+    # 17. Layer: Reconnected Culverts (Driveways & Embankments)
+    if reconnected_culverts_geojson and len(reconnected_culverts_geojson.get("features", [])) > 0:
+        folium.GeoJson(
+            reconnected_culverts_geojson,
+            name="Reconnected Culverts (Driveways/Roads)",
+            show=True,
+            style_function=lambda feature: {
+                "color": "#f59e0b",
+                "weight": 4.5,
+                "opacity": 0.95,
+                "dashArray": "6, 8"
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=["culvert_id", "gap_length_m", "confidence_score"],
+                aliases=["Culvert ID:", "Gap Length (m):", "Connection Confidence (%):"],
+                style="background-color: #14181F; color: #fbbf24; font-size: 12px; font-weight: bold; border-radius: 4px; padding: 4px;"
+            )
+        ).add_to(fmap)
+
+    # 18. Field Perimeter Boundary
     folium.Rectangle(
         bounds=leaflet_bounds,
         color="#ef4444",
