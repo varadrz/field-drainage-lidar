@@ -10,7 +10,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Any, Tuple, Optional, Union
 import json
+import logging
 import os
+import platform
+import shutil
+import tempfile
+import urllib.request
+import zipfile
 import numpy as np
 import rasterio
 import rasterio.features
@@ -19,6 +25,127 @@ import geopandas as gpd
 import whitebox
 
 from .data_loader import RasterMetadata, load_raster
+
+logger = logging.getLogger(__name__)
+
+
+def get_whitebox_tools() -> whitebox.WhiteboxTools:
+    """
+    Safely initializes WhiteboxTools across all environments (local Windows/macOS/Linux,
+    Docker containers, and Streamlit Community Cloud).
+    
+    In cloud environments with read-only site-packages (such as Streamlit Community Cloud),
+    the upstream package's automatic download_wbt() fails with:
+        [Errno 13] Permission denied: '.../site-packages/whitebox/WhiteboxTools_linux_amd64.zip'
+    
+    This function intercepts the process, checks whether an executable already exists,
+    and if absent, downloads and extracts the standalone binary into a guaranteed-writable
+    user directory (~/.whitebox or /tmp/whitebox), setting WBT_PATH so download_wbt() is bypassed.
+    """
+    exe_ext = ".exe" if platform.system() == "Windows" else ""
+    exe_name = f"whitebox_tools{exe_ext}"
+
+    # 1. Check if WBT_PATH is already set in environment and valid
+    if "WBT_PATH" in os.environ:
+        cand = Path(os.environ["WBT_PATH"]) / exe_name
+        if cand.exists() and os.access(cand, os.X_OK if platform.system() != "Windows" else os.F_OK):
+            wbt = whitebox.WhiteboxTools()
+            wbt.set_whitebox_dir(str(cand.parent))
+            return wbt
+
+    # 2. Check if whitebox is already present and executable in site-packages
+    pkg_dir = Path(whitebox.__file__).parent
+    candidate_locations = [
+        pkg_dir / exe_name,
+        pkg_dir / "WBT" / exe_name,
+    ]
+    for cand in candidate_locations:
+        if cand.exists() and os.access(cand, os.X_OK if platform.system() != "Windows" else os.F_OK):
+            os.environ["WBT_PATH"] = str(cand.parent)
+            wbt = whitebox.WhiteboxTools()
+            wbt.set_whitebox_dir(str(cand.parent))
+            return wbt
+
+    # 3. Check user-writable cache directory (~/.whitebox or tempdir/whitebox)
+    try:
+        user_cache_dir = Path.home() / ".whitebox"
+        user_cache_dir.mkdir(parents=True, exist_ok=True)
+    except (OSError, PermissionError):
+        user_cache_dir = Path(tempfile.gettempdir()) / "whitebox"
+        user_cache_dir.mkdir(parents=True, exist_ok=True)
+
+    found_exes = list(user_cache_dir.rglob(exe_name))
+    for fe in found_exes:
+        if os.access(fe, os.X_OK if platform.system() != "Windows" else os.F_OK):
+            os.environ["WBT_PATH"] = str(fe.parent)
+            wbt = whitebox.WhiteboxTools()
+            wbt.set_whitebox_dir(str(fe.parent))
+            return wbt
+
+    # 4. Binary missing: download and extract into user_cache_dir
+    links = {
+        "Windows": "https://www.whiteboxgeo.com/WBT_Windows/WhiteboxTools_win_amd64.zip",
+        "Darwin": "https://www.whiteboxgeo.com/WBT_Darwin/WhiteboxTools_darwin_amd64.zip",
+        "Darwin-arm": "https://www.whiteboxgeo.com/WBT_Darwin/WhiteboxTools_darwin_m_series.zip",
+        "Linux": "https://www.whiteboxgeo.com/WBT_Linux/WhiteboxTools_linux_amd64.zip",
+    }
+    backup_links = {
+        "Windows": "https://github.com/giswqs/whitebox-bin/raw/master/WhiteboxTools_win_amd64.zip",
+        "Darwin": "https://github.com/giswqs/whitebox-bin/raw/master/WhiteboxTools_darwin_amd64.zip",
+        "Linux": "https://github.com/giswqs/whitebox-bin/raw/master/WhiteboxTools_linux_amd64.zip",
+    }
+
+    sys_name = platform.system()
+    if sys_name == "Darwin" and platform.processor() == "arm":
+        url = links["Darwin-arm"]
+        backup_url = backup_links.get("Darwin")
+    else:
+        url = links.get(sys_name, links["Linux"])
+        backup_url = backup_links.get(sys_name, backup_links.get("Linux"))
+
+    logger.info(f"Downloading standalone WhiteboxTools binary from {url} to {user_cache_dir}...")
+    zip_target = user_cache_dir / f"wbt_{sys_name}.zip"
+
+    try:
+        urllib.request.urlretrieve(url, zip_target)
+    except Exception as exc:
+        logger.warning(f"Primary download failed ({exc}), falling back to backup mirror: {backup_url}")
+        if backup_url:
+            urllib.request.urlretrieve(backup_url, zip_target)
+        else:
+            raise
+
+    with zipfile.ZipFile(zip_target, "r") as zf:
+        zf.extractall(user_cache_dir)
+
+    try:
+        zip_target.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+    found_exes = list(user_cache_dir.rglob(exe_name))
+    if not found_exes:
+        raise RuntimeError(f"WhiteboxTools binary '{exe_name}' not found after extracting {url}")
+
+    chosen_exe = found_exes[0]
+    wbt_dir = chosen_exe.parent
+
+    # Grant execution permissions on Linux/macOS
+    if platform.system() != "Windows":
+        os.chmod(chosen_exe, 0o755)
+        plugins_dir = wbt_dir / "plugins"
+        if plugins_dir.exists():
+            for p in plugins_dir.iterdir():
+                if not p.name.endswith(".json"):
+                    try:
+                        os.chmod(p, 0o755)
+                    except OSError:
+                        pass
+
+    os.environ["WBT_PATH"] = str(wbt_dir)
+    wbt = whitebox.WhiteboxTools()
+    wbt.set_whitebox_dir(str(wbt_dir))
+    return wbt
 
 
 @dataclass
@@ -90,8 +217,8 @@ def run_hydrological_analysis(
     out_dir = Path(output_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Initialize WhiteboxTools
-    wbt = whitebox.WhiteboxTools()
+    # 1. Initialize WhiteboxTools (safe across local & read-only cloud containers)
+    wbt = get_whitebox_tools()
     wbt.set_verbose_mode(False)
 
     # File paths for intermediate & deliverable layers (absolute paths for Windows)
