@@ -737,6 +737,13 @@ def main():
         st.error(f"❌ Error during point cloud and hydrological processing: {str(e)}")
         return
 
+    # Data source provenance badge
+    data_source_badge = (
+        lidar_meta.data_source_badge
+        if (is_lidar and lidar_meta)
+        else ("Synthetic Indian Farm Benchmark" if is_sample else "Real Farm DEM / Satellite GeoTIFF")
+    )
+
     # --- POINT CLOUD SUMMARY BADGE & METRICS (PHASE 5) ---
     if is_lidar and lidar_meta is not None:
         st.markdown(f"""
@@ -993,7 +1000,7 @@ def main():
             f"({stats.crs_display}) for immediate drag-and-drop verification in QGIS, ArcGIS Pro, or CAD."
         )
 
-        badge_name = lidar_meta.data_source_badge if (is_lidar and lidar_meta) else ("Synthetic Indian Farm Benchmark" if is_sample else "Real Farm DEM / Satellite GeoTIFF")
+        badge_name = data_source_badge
         plot_name = Path(source_name).stem.replace("_", " ").title()
 
         exp_col1, exp_col2 = st.columns(2)
