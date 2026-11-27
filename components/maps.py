@@ -130,26 +130,29 @@ def create_terrain_map(
         attr="OpenStreetMap",
         name="OpenStreetMap",
         overlay=False,
-        control=True
+        control=True,
+        show=False
     ).add_to(fmap)
 
-    # 2. Base Satellite Imagery (Esri)
-    folium.TileLayer(
-        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attr="Esri World Imagery",
-        name="Satellite Imagery (Esri)",
-        overlay=False,
-        control=True
-    ).add_to(fmap)
-
-    # 3. Base Dark Minimal (CartoDB) - Active default dark basemap
+    # 2. Base Dark Minimal (CartoDB) (Alternative)
     folium.TileLayer(
         tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         attr="&copy; OpenStreetMap contributors &copy; CARTO",
         subdomains="abcd",
         name="Dark Minimal (CartoDB)",
         overlay=False,
-        control=True
+        control=True,
+        show=False
+    ).add_to(fmap)
+
+    # 3. Base Satellite Imagery (Esri) - Active default basemap
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attr="Esri World Imagery",
+        name="Satellite Imagery (Esri)",
+        overlay=False,
+        control=True,
+        show=True
     ).add_to(fmap)
 
     # Determine which layer to activate initially
