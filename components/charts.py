@@ -65,23 +65,34 @@ def create_3d_terrain_figure(
 
     fig = go.Figure()
 
-    # 4. 3D Terrain Surface Trace
+    # 4. 3D Terrain Surface Trace with Wireframe Contours
     surface_trace = go.Surface(
         x=x_coords,
         y=y_coords,
         z=z_scaled,
         customdata=elev_sub,
-        colorscale=colormap,
+        colorscale=[
+            [0.0, "#081018"],
+            [0.2, "#0B253A"],
+            [0.45, "#0D9488"],
+            [0.75, "#10B981"],
+            [1.0, "#A3E635"]
+        ],
         cmin=float(np.nanmin(z_scaled)),
         cmax=float(np.nanmax(z_scaled)),
+        contours=dict(
+            z=dict(show=True, usecolormap=False, color="#00E5FF", width=1.5, project_z=False),
+            x=dict(show=True, usecolormap=False, color="rgba(46, 204, 113, 0.35)", width=1, project_x=False),
+            y=dict(show=True, usecolormap=False, color="rgba(46, 204, 113, 0.35)", width=1, project_y=False)
+        ),
         colorbar=dict(
             title=dict(
-                text=f"Elevation (m MSL)<br><sub>{vertical_exaggeration}× Exaggeration</sub>",
-                font=dict(color="#F0F4F8", size=11)
+                text=f"Elevation (m MSL)<br><sub>{vertical_exaggeration:.0f}× Exaggeration</sub>",
+                font=dict(color="#F0F4F8", size=10, family="Inter")
             ),
-            tickfont=dict(color="#94A3B8", size=10),
-            len=0.7,
-            thickness=14,
+            tickfont=dict(color="#8B949E", size=9, family="JetBrains Mono"),
+            len=0.65,
+            thickness=12,
             x=1.02
         ),
         hovertemplate=(
@@ -94,15 +105,15 @@ def create_3d_terrain_figure(
         lighting=dict(
             ambient=0.45,
             diffuse=0.8,
-            specular=0.2,
-            roughness=0.6,
-            fresnel=0.1
+            specular=0.25,
+            roughness=0.5,
+            fresnel=0.15
         ),
         name="Field Terrain"
     )
     fig.add_trace(surface_trace)
 
-    # 5. Optional Simulated Rainfall / Flooding Plane
+    # 5. Optional Simulated Rainfall / Flooding Plane (Electric Cyan Translucent)
     if flood_depth_m > 0.0:
         real_water_level = min_elev + flood_depth_m
         scaled_water_level = min_elev + flood_depth_m * vertical_exaggeration
@@ -112,10 +123,10 @@ def create_3d_terrain_figure(
             x=x_coords,
             y=y_coords,
             z=water_z,
-            colorscale=[[0, "rgba(56, 189, 248, 0.55)"], [1, "rgba(56, 189, 248, 0.55)"]],
+            colorscale=[[0, "rgba(0, 229, 255, 0.45)"], [1, "rgba(0, 229, 255, 0.45)"]],
             showscale=False,
-            opacity=0.6,
-            name=f"Flood Water (+{flood_depth_m:.2f} m)",
+            opacity=0.65,
+            name=f"Water Plane (+{flood_depth_m:.2f} m)",
             hovertemplate=(
                 f"<b>Simulated Water Surface</b><br>"
                 f"Water Level: {real_water_level:.2f} m MSL (+{flood_depth_m:.2f} m)<br>"
@@ -141,7 +152,7 @@ def create_3d_terrain_figure(
             customdata=np.stack([route_real_z, np.array(selected_route.cut_depth_profile_m)], axis=-1),
             mode="lines+markers",
             line=dict(
-                color="#00F5D4",
+                color="#00E5FF",
                 width=6
             ),
             marker=dict(
@@ -161,40 +172,40 @@ def create_3d_terrain_figure(
         )
         fig.add_trace(route_trace)
 
-    # 7. Layout & Minimalist Dark Theme
+    # 7. Layout & Minimalist Dark Theme (Isometric View)
     aspect_ratio_y = (nrows / ncols) if ncols > 0 else 1.0
     aspect_ratio_z = max(0.2, min(0.6, 0.35 * (vertical_exaggeration / 10.0)))
 
     fig.update_layout(
-        paper_bgcolor="#0B0D10",
+        paper_bgcolor="#14181F",
         plot_bgcolor="#0B0D10",
         title=dict(
-            text=f"Interactive 3D Field Model &bull; {vertical_exaggeration:.0f}× Vertical Relief",
-            font=dict(color="#F0F4F8", size=14)
+            text=f"3D Topographic Mesh &bull; {vertical_exaggeration:.0f}× Relief",
+            font=dict(color="#F0F4F8", size=13, family="Inter")
         ),
-        margin=dict(l=0, r=0, b=0, t=35),
+        margin=dict(l=0, r=0, b=0, t=32),
         scene=dict(
             bgcolor="#0B0D10",
             xaxis=dict(
                 title="Easting (m)",
-                color="#94A3B8",
-                gridcolor="#1F2937",
+                color="#8B949E",
+                gridcolor="#232A35",
                 showbackground=True,
-                backgroundcolor="#0E1217"
+                backgroundcolor="#14181F"
             ),
             yaxis=dict(
                 title="Northing (m)",
-                color="#94A3B8",
-                gridcolor="#1F2937",
+                color="#8B949E",
+                gridcolor="#232A35",
                 showbackground=True,
-                backgroundcolor="#0E1217"
+                backgroundcolor="#14181F"
             ),
             zaxis=dict(
                 title=f"Elevation ({vertical_exaggeration:.0f}×)",
-                color="#94A3B8",
-                gridcolor="#1F2937",
+                color="#8B949E",
+                gridcolor="#232A35",
                 showbackground=True,
-                backgroundcolor="#0E1217"
+                backgroundcolor="#14181F"
             ),
             aspectmode="manual",
             aspectratio=dict(
@@ -203,13 +214,13 @@ def create_3d_terrain_figure(
                 z=aspect_ratio_z
             ),
             camera=dict(
-                eye=dict(x=-1.35, y=-1.45, z=1.1)
+                eye=dict(x=-1.4, y=-1.4, z=1.05)  # Clean Isometric Perspective
             )
         ),
         legend=dict(
-            font=dict(color="#F0F4F8", size=11),
-            bgcolor="rgba(20, 24, 31, 0.8)",
-            bordercolor="#2D3748",
+            font=dict(color="#F0F4F8", size=10, family="Inter"),
+            bgcolor="rgba(20, 24, 31, 0.85)",
+            bordercolor="#232A35",
             borderwidth=1,
             x=0.02,
             y=0.98

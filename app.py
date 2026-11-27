@@ -40,85 +40,249 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for Google Stitch-Standard Responsive Dark SaaS UI/UX
+# Custom CSS for High-Precision Minimalist Dark-Mode Desktop Web Application UI/UX
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
     
-    html, body, [class*="css"] {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* Global Canvas & Typography */
+    html, body, [class*="css"], .stApp {
+        background-color: #0B0D10 !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        color: #F0F4F8 !important;
     }
 
-    /* Main Container & Canvas */
+    /* Monospace for GIS Numbers, Coordinates, and Engineering Metrics */
+    .mono-font, .metric-value, .metric-value-alert, .metric-value-sink, .metric-value-stream,
+    .hud-item b, .legend-labels, code, pre, [data-testid="stMetricValue"] {
+        font-family: 'JetBrains Mono', monospace !important;
+        letter-spacing: -0.3px;
+    }
+
+    /* Streamlit Top Header & Main Grid Layout */
+    header[data-testid="stHeader"] {
+        background-color: transparent !important;
+        height: 2.5rem !important;
+        z-index: 10 !important;
+    }
     .block-container {
-        padding-top: 1.8rem;
-        padding-bottom: 3.5rem;
-        max-width: 1400px;
+        padding-top: 3.6rem !important;
+        padding-bottom: 2.5rem !important;
+        padding-left: 1.25rem !important;
+        padding-right: 1.25rem !important;
+        max-width: 1440px !important;
     }
 
-    /* Stitch Brand Header */
-    .stitch-header-wrap {
+    /* Left Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #14181F !important;
+        border-right: 1px solid #232A35 !important;
+        width: 320px !important;
+    }
+    section[data-testid="stSidebar"] .block-container {
+        padding: 1.2rem 1.0rem 2.0rem 1.0rem !important;
+    }
+
+    /* Top Navigation Bar (56px) */
+    .top-nav-bar {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        flex-wrap: wrap;
+        min-height: 56px;
+        padding: 8px 18px;
+        margin-top: 4px;
+        margin-bottom: 16px;
+        background: #14181F;
+        border: 1px solid #232A35;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        position: relative;
+        z-index: 20;
+    }
+    .top-nav-left {
+        display: flex;
+        align-items: center;
         gap: 12px;
-        margin-bottom: 1.2rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .main-header {
-        font-size: 2.15rem;
+    .top-nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1.15rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #10B981 0%, #34D399 50%, #06B6D4 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        letter-spacing: -0.6px;
-        line-height: 1.2;
+        color: #F0F4F8;
     }
-    .sub-header {
-        font-size: 0.95rem;
-        color: #94A3B8;
-        font-weight: 400;
-        margin-top: 3px;
+    .top-nav-brand span {
+        color: #2ECC71;
     }
-    .stitch-badge {
+    .top-nav-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .pill-btn {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: rgba(16, 185, 129, 0.12);
-        color: #10B981;
-        border: 1px solid rgba(16, 185, 129, 0.3);
+        background: #1C222B;
+        color: #8B949E;
+        border: 1px solid #232A35;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .pill-btn:hover {
+        color: #F0F4F8;
+        border-color: #2ECC71;
+        background: #1E2530;
+    }
+    .pill-btn.active {
+        color: #2ECC71;
+        border-color: #2ECC71;
+        background: rgba(46, 204, 113, 0.12);
+    }
+
+    /* Status Pill Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #1C222B;
+        color: #F0F4F8;
+        border: 1px solid #232A35;
         border-radius: 9999px;
         padding: 4px 12px;
         font-size: 0.75rem;
         font-weight: 600;
-        letter-spacing: 0.3px;
-        text-transform: uppercase;
+    }
+    .status-badge-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #2ECC71;
+        box-shadow: 0 0 8px #2ECC71;
+        animation: pulse-glow 2s infinite ease-in-out;
     }
 
-    /* Stitch Floating Map HUD (Heads-Up Display) */
+    @keyframes pulse-glow {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.45; transform: scale(0.85); }
+    }
+
+    /* Uploader Box */
+    [data-testid="stFileUploader"] {
+        border: 1px dashed #232A35 !important;
+        border-radius: 10px !important;
+        background: #14181F !important;
+        padding: 8px !important;
+        transition: border-color 0.2s ease;
+    }
+    [data-testid="stFileUploader"]:hover {
+        border-color: #2ECC71 !important;
+    }
+
+    /* KPI Metric Strip (96px height, 4 Equal Cards, 12px radius) */
+    .kpi-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    .kpi-card {
+        background: #14181F;
+        border: 1px solid #232A35;
+        border-radius: 12px;
+        padding: 14px 16px;
+        min-height: 96px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
+        transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease, box-shadow 0.18s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.65);
+    }
+    .kpi-card.accent-green { border-left: 4px solid #2ECC71; }
+    .kpi-card.accent-amber { border-left: 4px solid #F59E0B; }
+    .kpi-card.accent-cyan  { border-left: 4px solid #00E5FF; }
+    .kpi-card.accent-slate { border-left: 4px solid #8B949E; }
+
+    .kpi-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .kpi-title {
+        font-size: 0.75rem;
+        color: #8B949E;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .kpi-badge {
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 6px;
+    }
+    .kpi-badge-amber {
+        background: rgba(245, 158, 11, 0.16);
+        color: #F59E0B;
+        border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+    .kpi-badge-green {
+        background: rgba(46, 204, 113, 0.16);
+        color: #2ECC71;
+        border: 1px solid rgba(46, 204, 113, 0.35);
+    }
+    .kpi-badge-cyan {
+        background: rgba(0, 229, 255, 0.16);
+        color: #00E5FF;
+        border: 1px solid rgba(0, 229, 255, 0.35);
+    }
+    .kpi-value {
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 1.55rem;
+        font-weight: 700;
+        color: #F0F4F8;
+        line-height: 1.1;
+        margin: 4px 0 2px 0;
+    }
+    .kpi-subtext {
+        font-size: 0.74rem;
+        color: #8B949E;
+    }
+
+    /* Floating Heads-Up Display (HUD) */
     .stitch-hud {
         display: flex;
         align-items: center;
         justify-content: flex-start;
         flex-wrap: wrap;
-        gap: 10px;
-        background: rgba(18, 23, 31, 0.85);
+        gap: 12px;
+        background: rgba(20, 24, 31, 0.88);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.09);
+        border: 1px solid #232A35;
         border-radius: 10px;
         padding: 8px 14px;
-        margin-bottom: 10px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        margin-bottom: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     }
     .hud-item {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         font-size: 0.78rem;
-        color: #E2E8F0;
+        color: #F0F4F8;
     }
     .hud-dot {
         width: 8px;
@@ -126,82 +290,101 @@ st.markdown("""
         border-radius: 50%;
         display: inline-block;
     }
-    .dot-emerald { background: #10B981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.8); }
-    .dot-cyan { background: #06B6D4; box-shadow: 0 0 8px rgba(6, 182, 212, 0.8); }
+    .dot-emerald { background: #2ECC71; box-shadow: 0 0 8px rgba(46, 204, 113, 0.8); }
+    .dot-cyan { background: #00E5FF; box-shadow: 0 0 8px rgba(0, 229, 255, 0.8); }
     .dot-blue { background: #38BDF8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.8); }
     .dot-amber { background: #F59E0B; box-shadow: 0 0 8px rgba(245, 158, 11, 0.8); }
     .dot-violet { background: #A855F7; box-shadow: 0 0 8px rgba(168, 85, 247, 0.8); }
 
-    /* Stitch Glass Cards */
-    .metric-card, .metric-card-alert, .metric-card-sink, .metric-card-stream {
-        background: #12171F;
+    /* Interactive Buttons */
+    .stButton>button {
+        background: #14181F !important;
+        color: #2ECC71 !important;
+        border: 1px solid #2ECC71 !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        min-height: 42px !important;
+        padding: 8px 16px !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    .stButton>button:hover {
+        background: #2ECC71 !important;
+        color: #0B0D10 !important;
+        box-shadow: 0 0 16px rgba(46, 204, 113, 0.45) !important;
+        transform: translateY(-1px);
+    }
+    .stDownloadButton>button {
+        background: #2ECC71 !important;
+        color: #0B0D10 !important;
+        border: 1px solid #2ECC71 !important;
+        border-radius: 8px !important;
+        font-weight: 700 !important;
+        min-height: 44px !important;
+        padding: 10px 18px !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    .stDownloadButton>button:hover {
+        background: #27ae60 !important;
+        color: #0B0D10 !important;
+        box-shadow: 0 0 20px rgba(46, 204, 113, 0.6) !important;
+        transform: translateY(-1px);
+    }
+
+    /* Tabs Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        border-bottom: 1px solid #232A35;
+        padding-bottom: 4px;
+        margin-bottom: 12px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        padding: 10px 18px;
+        color: #8B949E;
+        font-weight: 600;
+        font-size: 0.9rem;
+        background: transparent;
+        transition: color 0.15s ease, background 0.15s ease;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #F0F4F8;
+        background: rgba(255, 255, 255, 0.04);
+    }
+    .stTabs [aria-selected="true"] {
+        color: #2ECC71 !important;
+        background: #1C222B !important;
+        border-bottom: 2px solid #2ECC71 !important;
+    }
+
+    /* Bottom Analytics Split Panel Cards */
+    .analytics-card {
+        background: #14181F;
+        border: 1px solid #232A35;
         border-radius: 12px;
         padding: 16px 18px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
-        transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
-        position: relative;
-        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     }
-    .metric-card:hover, .metric-card-alert:hover, .metric-card-sink:hover, .metric-card-stream:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.6);
+    .analytics-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #232A35;
     }
-    .metric-card {
-        border-left: 4px solid #10B981;
-    }
-    .metric-card-alert {
-        border-left: 4px solid #F59E0B;
-        background: #161512;
-    }
-    .metric-card-sink {
-        border-left: 4px solid #38BDF8;
-        background: #0D1624;
-    }
-    .metric-card-stream {
-        border-left: 4px solid #00F5D4;
-        background: #0E1B1B;
-    }
-    .metric-label {
-        font-size: 0.74rem;
-        color: #94A3B8;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.6px;
-    }
-    .metric-value {
-        font-size: 1.55rem;
+    .analytics-title {
+        font-size: 0.95rem;
         font-weight: 700;
-        color: #F8FAFC;
-        margin-top: 4px;
-        letter-spacing: -0.4px;
-    }
-    .metric-value-alert {
-        font-size: 1.55rem;
-        font-weight: 700;
-        color: #FBBF24;
-        margin-top: 4px;
-        letter-spacing: -0.4px;
-    }
-    .metric-value-sink {
-        font-size: 1.55rem;
-        font-weight: 700;
-        color: #38BDF8;
-        margin-top: 4px;
-        letter-spacing: -0.4px;
-    }
-    .metric-value-stream {
-        font-size: 1.55rem;
-        font-weight: 700;
-        color: #00F5D4;
-        margin-top: 4px;
-        letter-spacing: -0.4px;
+        color: #F0F4F8;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     /* Export Cards */
     .export-card {
-        background: #12171F;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #14181F;
+        border: 1px solid #232A35;
         border-radius: 12px;
         padding: 18px 20px;
         margin-bottom: 14px;
@@ -212,89 +395,20 @@ st.markdown("""
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
     }
 
-    /* Stitch Touch-Friendly Interactive Buttons */
-    .stButton>button {
-        background: #12171F !important;
-        color: #10B981 !important;
-        border: 1px solid rgba(16, 185, 129, 0.5) !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        min-height: 42px !important;
-        padding: 8px 16px !important;
-        transition: all 0.2s ease !important;
-    }
-    .stButton>button:hover {
-        background: #10B981 !important;
-        color: #090C10 !important;
-        border-color: #10B981 !important;
-        box-shadow: 0 0 16px rgba(16, 185, 129, 0.45) !important;
-        transform: translateY(-1px);
-    }
-    .stDownloadButton>button {
-        background: #12171F !important;
-        color: #06B6D4 !important;
-        border: 1px solid rgba(6, 182, 212, 0.5) !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        min-height: 44px !important;
-        padding: 10px 18px !important;
-        transition: all 0.2s ease !important;
-    }
-    .stDownloadButton>button:hover {
-        background: #06B6D4 !important;
-        color: #090C10 !important;
-        border-color: #06B6D4 !important;
-        box-shadow: 0 0 16px rgba(6, 182, 212, 0.45) !important;
-        transform: translateY(-1px);
-    }
-
-    /* Stitch Styled Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        padding-bottom: 4px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px 8px 0 0;
-        padding: 10px 18px;
-        color: #94A3B8;
-        font-weight: 600;
-        font-size: 0.9rem;
-        background: transparent;
-        transition: color 0.15s ease, background 0.15s ease;
-    }
-    .stTabs [data-baseweb="tab"]:hover {
-        color: #F8FAFC;
-        background: rgba(255, 255, 255, 0.04);
-    }
-    .stTabs [aria-selected="true"] {
-        color: #10B981 !important;
-        border-bottom: 2px solid #10B981 !important;
-    }
-
-    /* Mobile & Tablet Responsive Media Queries */
-    @media (max-width: 900px) {
-        .block-container {
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
+    /* Responsive Grid */
+    @media (max-width: 1024px) {
+        .kpi-strip {
+            grid-template-columns: repeat(2, 1fr) !important;
         }
-        .main-header {
-            font-size: 1.75rem !important;
+    }
+    @media (max-width: 640px) {
+        .kpi-strip {
+            grid-template-columns: 1fr !important;
         }
-        .metric-value, .metric-value-alert, .metric-value-sink, .metric-value-stream {
-            font-size: 1.3rem !important;
-        }
-        .stitch-hud {
+        .top-nav-bar {
             flex-direction: column !important;
             align-items: flex-start !important;
-        }
-    }
-    @media (max-width: 600px) {
-        .main-header {
-            font-size: 1.45rem !important;
-        }
-        .stButton>button, .stDownloadButton>button {
-            width: 100% !important;
+            gap: 8px !important;
         }
     }
 </style>
@@ -494,45 +608,67 @@ def get_cached_pdf_report(
 
 
 def main():
-    # Application Title & Subtitle (Google Stitch Standard)
+    # 1. Top Navigation Bar (56px)
     st.markdown("""
-    <div class="stitch-header-wrap">
-        <div>
-            <div class="main-header">🌾 Field Drainage Using LiDAR</div>
-            <div class="sub-header">Autonomous Precision Agri-Drainage Engine &bull; Phase 6 Final Release</div>
+    <div class="top-nav-bar">
+        <div class="top-nav-left">
+            <div class="top-nav-brand">
+                <span style="color:#2ECC71; font-size:1.4rem;">∿</span>
+                <span>Field Drainage Using LiDAR</span>
+            </div>
+            <div class="status-badge">
+                <span class="status-badge-dot"></span>
+                <span>Simulated LiDAR &bull; EPSG:32644 (Metric)</span>
+            </div>
         </div>
-        <div class="stitch-badge">
-            <span style="font-size:12px;">⚡</span> Production GIS Ready
+        <div class="top-nav-right">
+            <div class="pill-btn">🌐 EN | हिं | मर</div>
+            <div class="pill-btn" title="Precision Geospatial Agri-Drainage Engine">❓ Help / Glossary</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     # --- SIDEBAR CONTROLS ---
     with st.sidebar:
-        st.header("🌱 Field Data & Map Setup")
+        # 1. Header Block
+        st.markdown("""
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span style="font-size:1.4rem; color:#2ECC71;">∿</span>
+            <span style="font-size:1.1rem; font-weight:700; color:#F0F4F8; letter-spacing:-0.3px;">Field Drainage Using LiDAR</span>
+        </div>
+        <div style="margin-bottom:14px;">
+            <div class="status-badge">
+                <span class="status-badge-dot"></span>
+                <span>Active CRS &bull; EPSG:32644 (Metric)</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
         sample_tif_path = Path("data/sample/synthetic_indian_farm.tif")
         sample_las_path = Path("data/sample/synthetic_indian_farm.las")
 
-        col_b1, col_b2 = st.columns(2)
-        load_sample_dem = col_b1.button("🌱 5-Ac TIFF", use_container_width=True, help="Load synthetic Indian farm elevation raster.")
-        load_sample_lidar = col_b2.button("📡 5-Ac LiDAR", use_container_width=True, help="Load 100k-point synthetic LiDAR point cloud with culvert gap.")
-
+        # 2. Data Input Section
+        st.markdown("#### 📂 Field Data Input")
         uploaded_file = st.file_uploader(
-            "Upload Field Map / LiDAR (.las, .laz, .tif, .tiff)",
+            "Drop .LAS, .LAZ, or .TIF field file",
             type=["tif", "tiff", "las", "laz"],
             help="Upload bare-earth GeoTIFF elevation (.tif) or raw airborne/drone LiDAR point clouds (.las, .laz)."
         )
 
+        col_b1, col_b2 = st.columns(2)
+        load_sample_dem = col_b1.button("🌱 5-Ac Farm DEM", use_container_width=True, help="Load 5-acre synthetic Indian farm bare-earth elevation raster.")
+        load_sample_lidar = col_b2.button("📡 5-Ac LiDAR (.las)", use_container_width=True, help="Load 100k-point synthetic airborne LiDAR point cloud with culvert gap.")
+
         st.markdown("---")
-        st.subheader("🗺️ Map View & Layers")
-        
+
+        # 3. Map Layers Section
+        st.markdown("#### 🗺️ Map Layers & Overlays")
         default_layer_choice = st.selectbox(
-            "Main Map Layer",
+            "Default Active Layer",
             options=[
                 "Extracted Ditches & Culverts (LiDAR)",
                 "Proposed Surface Drainage Routes",
-                "Land Elevation Map",
+                "Land Elevation Map (DTM)",
                 "Natural Runoff Paths (Streams)",
                 "Water Flow Concentration",
                 "Waterlogging Depth Zones",
@@ -542,33 +678,55 @@ def main():
                 "Field Catchments (Sub-Basins)"
             ],
             index=0,
-            help="Choose which layer appears first on the map. You can also turn layers on and off anytime using the top-right map menu."
+            help="Select the default primary layer. You can toggle all layers dynamically via the top-right map menu."
         )
 
         colormap_choice = st.selectbox(
-            "Elevation Color Theme",
+            "Elevation Colormap",
             options=["terrain", "viridis", "plasma", "YlGnBu", "gist_earth"],
             index=0,
-            help="Select the color palette for elevation gradients."
+            help="Color ramp for elevation terrain visualization."
         )
 
         opacity_slider = st.slider(
-            "Map Transparency",
+            "Layer Opacity",
             min_value=0.2,
             max_value=1.0,
             value=0.75,
             step=0.05,
-            help="Adjust transparency to blend elevation data over satellite imagery."
-        )
-
-        animate_flow_toggle = st.toggle(
-            "🌊 Animated Water Flow on Map",
-            value=True,
-            help="Show animated water pulses flowing along channels down toward outlets. Speed corresponds to route slope."
+            help="Adjust layer transparency over the basemap."
         )
 
         st.markdown("---")
-        st.subheader("🚜 Drainage Trench Design")
+
+        # 4. Analysis Parameters Section
+        st.markdown("#### ⚙️ Engineering & Hydrology Parameters")
+        contour_interval = st.radio(
+            "Contour Interval",
+            options=[0.1, 0.25, 0.5, 1.0],
+            index=1,
+            horizontal=True,
+            format_func=lambda x: f"{x}m",
+            help="Step between contour lines (0.25m reveals subtle micro-topography on flat farm plots)."
+        )
+
+        sink_threshold_m = st.slider(
+            "Min. Waterlogging Depth (m)",
+            min_value=0.02,
+            max_value=0.30,
+            value=0.05,
+            step=0.01,
+            help="Minimum puddle depth required to flag an actionable ponding depression."
+        )
+
+        flow_accum_threshold = st.slider(
+            "Channel Sensitivity (Flow Accumulation)",
+            min_value=30,
+            max_value=300,
+            value=80,
+            step=10,
+            help="Upstream accumulation threshold (Low = captures minor surface trickles, High = isolates major drainage paths)."
+        )
 
         min_ditch_slope_pct = st.slider(
             "Minimum Trench Bed Grade (%)",
@@ -576,7 +734,7 @@ def main():
             max_value=1.0,
             value=0.2,
             step=0.05,
-            help="Minimum downhill hydraulic gradient along the ditch invert bed to guarantee self-cleansing gravity drainage without uphill backwater."
+            help="Guarantees self-cleansing monotonic gravity slope without uphill backwater."
         )
 
         ditch_bottom_width = st.slider(
@@ -585,7 +743,7 @@ def main():
             max_value=1.5,
             value=0.5,
             step=0.1,
-            help="Excavated base width of trapezoidal drainage channel (standard farm mini-excavator bucket is ~0.5m)."
+            help="Base width of excavated trapezoidal channel."
         )
 
         min_sink_area = st.slider(
@@ -597,36 +755,23 @@ def main():
             help="Minimum surface puddle area required to generate an automated engineered drainage route."
         )
 
-        st.markdown("---")
-        st.subheader("💧 Water Flow & Hydrology")
-        
-        flow_accum_threshold = st.slider(
-            "Channel Sensitivity (Flow Threshold)",
-            min_value=30,
-            max_value=300,
-            value=80,
-            step=10,
-            help="Accumulated upstream cell threshold to extract natural runoff channels. Lower values show small surface trickles; higher values isolate major drainage gullies."
+        vertical_exaggeration_sidebar = st.slider(
+            "Vertical Exaggeration (3D)",
+            min_value=1.0,
+            max_value=25.0,
+            value=10.0,
+            step=1.0,
+            help="Vertical relief multiplier for 3D exploration."
         )
 
-        sink_threshold_m = st.slider(
-            "Minimum Waterlogging Depth (m)",
-            min_value=0.02,
-            max_value=0.20,
-            value=0.05,
-            step=0.01,
-            help="Minimum puddle depth to flag as a genuine waterlogging depression (filters minor tillage roughness)."
-        )
-
-        contour_interval = st.selectbox(
-            "Elevation Line Gap (m)",
-            options=[0.1, 0.25, 0.5, 1.0],
-            index=1,
-            help="Height step between contour lines (e.g., 0.25 m shows fine micro-slope details across flat plots)."
+        animate_flow_toggle = st.toggle(
+            "🌊 Animated Water Flow",
+            value=True,
+            help="Animate directional water flow along channels toward field outlets."
         )
 
         st.markdown("---")
-        st.caption("🛡️ **Smart Agri-Drainage:** Powered by WhiteboxTools Open Core & 100% free open-source technology.")
+        st.caption("🛡️ **Precision Agri-Drainage Engine:** 100% free open-source stack powered by WhiteboxTools Open Core & laspy.")
         st.caption("© 2026 Varad Patil. All Rights Reserved.")
 
     # Determine which source to process
@@ -796,49 +941,51 @@ def main():
     else:
         st.success(f"✅ **Accurate Metric Map:** Measured in **meters** ({stats.crs_display}) &bull; Ground detail: **{stats.spatial_resolution_m:.2f} m per pixel**")
 
-    # --- TOP ROW: 4 CLEAN AGRONOMIC & ENGINEERING KPI METRIC CARDS ---
-    st.markdown("### 📊 Field Overview & Hydraulic Health Indicators")
+    # --- TOP ROW: 4 CLEAN AGRONOMIC & ENGINEERING KPI METRIC CARDS (96px height) ---
     best_r = drainage_plan.best_route
-    kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
+    best_len_str = f"{best_r.length_m:,.0f} m" if best_r else "No Sink"
+    slope_desc = "Nearly Level" if terrain_summary.mean_slope_pct < 1.0 else ("Gentle Slope" if terrain_summary.mean_slope_pct < 2.5 else "Moderate Slope")
+    risk_level = "High" if hydro_result.waterlogging_area_pct > 15.0 else ("Moderate" if hydro_result.waterlogging_area_pct > 5.0 else "Low")
+    pockets_count = len(drainage_plan.priority_sinks)
+    optimal_count = len(drainage_plan.routes)
+    outlets_count = len(drainage_plan.candidate_outlets)
 
-    with kpi_col1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Field Area</div>
-            <div class="metric-value">{stats.area_acres:.2f} ac</div>
-            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">{stats.area_ha:.2f} Ha &bull; {stats.area_sq_m:,.0f} m²</div>
+    st.markdown(f"""
+    <div class="kpi-strip">
+        <div class="kpi-card accent-green">
+            <div class="kpi-header">
+                <span class="kpi-title">Field Area</span>
+                <span class="kpi-badge kpi-badge-green">Metric Area</span>
+            </div>
+            <div class="kpi-value">{stats.area_acres:.1f} Acres</div>
+            <div class="kpi-subtext">{stats.area_ha:.2f} ha &bull; {stats.spatial_resolution_m:.0f}m Resolution</div>
         </div>
-        """, unsafe_allow_html=True)
-
-    with kpi_col2:
-        st.markdown(f"""
-        <div class="metric-card-sink">
-            <div class="metric-label">Waterlogging Risk</div>
-            <div class="metric-value-sink">{hydro_result.waterlogging_area_pct:.1f}% Field</div>
-            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">{hydro_result.total_waterlogging_volume_m3:,.0f} m³ trapped &bull; {hydro_result.max_waterlogging_depth_cm:.1f} cm max</div>
+        <div class="kpi-card accent-amber">
+            <div class="kpi-header">
+                <span class="kpi-title">Waterlogging Risk</span>
+                <span class="kpi-badge kpi-badge-amber">{risk_level} &bull; {hydro_result.waterlogging_area_pct:.1f}%</span>
+            </div>
+            <div class="kpi-value" style="color: #F59E0B;">{hydro_result.waterlogging_area_pct:.1f}%</div>
+            <div class="kpi-subtext">{pockets_count} Priority Pockets &bull; {hydro_result.total_waterlogging_volume_m3:,.0f} m³ trapped</div>
         </div>
-        """, unsafe_allow_html=True)
-
-    with kpi_col3:
-        best_len_str = f"{best_r.length_m:,.1f} m" if best_r else "No Sink"
-        best_slope_str = f"{best_r.bed_slope_pct:.2f}% grade" if best_r else "N/A"
-        st.markdown(f"""
-        <div class="metric-card-stream">
-            <div class="metric-label">Recommended Channel</div>
-            <div class="metric-value-stream">{best_len_str}</div>
-            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">Bed Slope: {best_slope_str} &bull; Gravity Outflow</div>
+        <div class="kpi-card accent-cyan">
+            <div class="kpi-header">
+                <span class="kpi-title">Recommended Channels</span>
+                <span class="kpi-badge kpi-badge-cyan">{optimal_count} Optimal</span>
+            </div>
+            <div class="kpi-value" style="color: #2ECC71;">{best_len_str}</div>
+            <div class="kpi-subtext">{optimal_count} Optimal Routes &bull; {outlets_count} Field Outlet(s)</div>
         </div>
-        """, unsafe_allow_html=True)
-
-    with kpi_col4:
-        slope_desc = "Nearly Level" if terrain_summary.mean_slope_pct < 1.0 else ("Gentle Slope" if terrain_summary.mean_slope_pct < 2.5 else "Moderate Slope")
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Average Slope</div>
-            <div class="metric-value">{terrain_summary.mean_slope_pct:.2f}%</div>
-            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">Max: {terrain_summary.max_slope_pct:.1f}% &bull; {slope_desc}</div>
+        <div class="kpi-card accent-slate">
+            <div class="kpi-header">
+                <span class="kpi-title">Average Field Slope</span>
+                <span class="kpi-badge" style="background: rgba(139,148,158,0.15); color: #8B949E; border: 1px solid #232A35;">Grade</span>
+            </div>
+            <div class="kpi-value">{terrain_summary.mean_slope_pct:.2f}%</div>
+            <div class="kpi-subtext">{slope_desc} &bull; {'Poor Natural Drainage' if terrain_summary.mean_slope_pct < 1.0 else 'Moderate Drainage'}</div>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
     # Auxiliary Elevation & Hydrology Metrics (Collapsible)
     with st.expander("ℹ️ View Additional Relief, Sub-Basin & Stream Metrics", expanded=False):
@@ -858,15 +1005,16 @@ def main():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- MAIN VIEWPORT: MASTER GIS, COMPARISON MODE & EXPORTS TABS ---
-    tab_master, tab_compare_view, tab_exports = st.tabs([
-        "🗺️ Interactive GIS Master View",
-        "⚖️ Visual Comparison Mode",
-        "📑 Reports & GIS Exports (QGIS Ready)"
+    # --- MAIN VIEWPORT: 4 MASTER NAVIGATION TABS ---
+    tab_master, tab_3d_view, tab_compare_view, tab_exports = st.tabs([
+        "🗺️ Map Analysis",
+        "🌐 3D Field View",
+        "⚖️ Compare Mode",
+        "📑 Reports & Exports"
     ])
 
     with tab_master:
-        st.markdown(f"#### 🗺️ Multi-Layer Field Drainage & Hydrology Map &bull; *{source_name}*")
+        st.markdown(f"#### 🗺️ Interactive GIS Map Workspace &bull; *{source_name}*")
         
         # Stitch Floating Heads-Up Display (HUD)
         st.markdown(f"""
@@ -911,6 +1059,121 @@ def main():
                 returned_objects=[],
                 key="field_drainage_master_map"
             )
+
+        # Bottom Analytics Split Panel (30% Viewport Height, 65% / 35% Split)
+        st.markdown("<br>", unsafe_allow_html=True)
+        col_split_left, col_split_right = st.columns([0.65, 0.35])
+
+        if drainage_plan.routes and drainage_plan.best_route:
+            route_options = {r.route_id: r for r in drainage_plan.routes}
+
+            with col_split_left:
+                st.markdown("""
+                <div class="analytics-card-header">
+                    <div class="analytics-title">
+                        <span style="color:#2ECC71;">📈</span> Proposed Channel Elevation Profile
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                sub_sel1, sub_sel2 = st.columns([0.7, 0.3])
+                with sub_sel1:
+                    selected_route_id = st.selectbox(
+                        "Select Drainage Route",
+                        options=list(route_options.keys()),
+                        index=0,
+                        key="select_route_profile_main",
+                        label_visibility="collapsed",
+                        format_func=lambda rid: f"{rid} {'— Optimal • ' if route_options[rid].is_recommended else '— Candidate • '}{route_options[rid].bed_slope_pct:.2f}% Grade (Cut: {route_options[rid].max_cut_depth_m:.2f}m)"
+                    )
+                with sub_sel2:
+                    view_all_toggle = st.toggle("View All Routes", value=False, key="toggle_view_all_routes")
+
+                selected_route = route_options[selected_route_id]
+                fig_profile = create_trench_profile_figure(selected_route)
+                st.pyplot(fig_profile, use_container_width=True)
+                st.caption(
+                    f"ℹ️ **Invert Profile for {selected_route.route_id}:** Starting at waterlogging pit ({selected_route.start_elev_m:.2f} m), "
+                    f"maintains continuous gravity grade of {selected_route.bed_slope_pct:.2f}% to outlet "
+                    f"(outlet bed: {selected_route.outlet_bed_elev_m:.2f} m). Max cut: **{selected_route.max_cut_depth_m:.2f} m** &bull; Earthwork: **{selected_route.earthwork_vol_m3:,.1f} m³**."
+                )
+
+            with col_split_right:
+                st.markdown("""
+                <div class="analytics-card-header">
+                    <div class="analytics-title">
+                        <span style="color:#00E5FF;">🌐</span> 3D Terrain Mesh
+                    </div>
+                    <div style="font-size:0.75rem; color:#8B949E;">Isometric 10×</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                c_rain1, c_rain2 = st.columns([0.65, 0.35])
+                with c_rain1:
+                    sim_rain_btn = st.toggle("▶ Simulate Rainfall", value=False, key="toggle_simulate_rainfall_preview")
+                with c_rain2:
+                    st.caption("Flooding Plane")
+
+                flood_m = 0.35 if sim_rain_btn else 0.0
+                fig_3d_preview = create_3d_terrain_figure(
+                    elevation=elevation,
+                    metadata=metadata,
+                    selected_route=selected_route,
+                    vertical_exaggeration=float(vertical_exaggeration_sidebar),
+                    flood_depth_m=flood_m,
+                    max_grid=160
+                )
+                st.plotly_chart(fig_3d_preview, use_container_width=True, key="plotly_3d_preview_mesh")
+                st.caption("💡 **3D Preview:** Left-click & drag to rotate; scroll to zoom. Cyan line = trench.")
+        else:
+            with col_split_left:
+                st.info("ℹ️ No critical waterlogging depressions detected at current threshold settings.")
+            with col_split_right:
+                fig_3d_preview = create_3d_terrain_figure(
+                    elevation=elevation,
+                    metadata=metadata,
+                    selected_route=None,
+                    vertical_exaggeration=float(vertical_exaggeration_sidebar),
+                    flood_depth_m=0.0,
+                    max_grid=160
+                )
+                st.plotly_chart(fig_3d_preview, use_container_width=True, key="plotly_3d_preview_empty")
+
+    with tab_3d_view:
+        st.markdown(f"#### 🌐 Full-Field 3D Topographic Exploration &bull; *{source_name}*")
+        st.caption("Inspect micro-topographic depressions, field bunds, and waterlogging hollows in high-resolution 3D perspective.")
+
+        c3_ctrl1, c3_ctrl2 = st.columns(2)
+        with c3_ctrl1:
+            full_vert_exagg = st.slider(
+                "Vertical Relief Exaggeration",
+                min_value=1.0,
+                max_value=25.0,
+                value=float(vertical_exaggeration_sidebar),
+                step=1.0,
+                key="slider_full_vert_exagg"
+            )
+        with c3_ctrl2:
+            full_flood_sim = st.slider(
+                "Simulate Flooding Water Plane (m)",
+                min_value=0.0,
+                max_value=1.5,
+                value=0.0,
+                step=0.05,
+                key="slider_full_flood_sim"
+            )
+
+        active_route_for_3d = drainage_plan.best_route if drainage_plan.routes else None
+        fig_3d_full = create_3d_terrain_figure(
+            elevation=elevation,
+            metadata=metadata,
+            selected_route=active_route_for_3d,
+            vertical_exaggeration=full_vert_exagg,
+            flood_depth_m=full_flood_sim,
+            max_grid=220
+        )
+        st.plotly_chart(fig_3d_full, use_container_width=True, key="plotly_3d_full_field_model")
+        st.caption("💡 **3D Interaction:** Left-click & drag to rotate; scroll to zoom; double-click to reset camera. Cyan line = proposed trench.")
 
     with tab_compare_view:
         st.markdown("#### ⚖️ Visual Comparison: Original Terrain vs. Waterlogging Risk vs. Drainage Alignment")
@@ -1109,86 +1372,8 @@ def main():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- BOTTOM SPLIT ROW: ELEVATION PROFILE & 3D TERRAIN MESH PREVIEW ---
-    st.markdown("### 📐 Trench Elevation Cross-Section & 3D Topographic Exploration")
-    col_split_left, col_split_right = st.columns([1, 1])
-
-    if drainage_plan.routes and drainage_plan.best_route:
-        route_options = {r.route_id: r for r in drainage_plan.routes}
-
-        with col_split_left:
-            st.markdown("#### 📈 Longitudinal Trench Elevation Cross-Section")
-            selected_route_id = st.selectbox(
-                "Select Drainage Channel Route:",
-                options=list(route_options.keys()),
-                index=0,
-                key="select_route_profile",
-                format_func=lambda rid: f"{rid} {'⭐ [Recommended]' if route_options[rid].is_recommended else ''} (Length: {route_options[rid].length_m:.1f} m, Cut: {route_options[rid].max_cut_depth_m:.2f} m)"
-            )
-            selected_route = route_options[selected_route_id]
-            fig_profile = create_trench_profile_figure(selected_route)
-            st.pyplot(fig_profile, use_container_width=True)
-            st.caption(
-                f"ℹ️ **Invert Profile for {selected_route.route_id}:** Starting at waterlogging pit ({selected_route.start_elev_m:.2f} m), "
-                f"the ditch maintains a continuous gravity grade of {selected_route.bed_slope_pct:.2f}% to the outlet "
-                f"(outlet bed: {selected_route.outlet_bed_elev_m:.2f} m, ground: {selected_route.end_elev_m:.2f} m). "
-                f"Max cut: {selected_route.max_cut_depth_m:.2f} m &bull; Earthwork: {selected_route.earthwork_vol_m3:,.1f} m³."
-            )
-
-        with col_split_right:
-            st.markdown("#### 🌐 Interactive 3D Bare-Earth Terrain Preview")
-            c3_sub1, c3_sub2 = st.columns(2)
-            with c3_sub1:
-                vertical_exagg = st.slider(
-                    "Vertical Relief Exaggeration",
-                    min_value=1.0,
-                    max_value=25.0,
-                    value=10.0,
-                    step=1.0,
-                    help="Magnifies vertical relief to make micro-topography, bunds, and waterlogging hollows clearly visible in 3D.",
-                    key="slider_vert_exagg"
-                )
-            with c3_sub2:
-                flood_depth_sim = st.slider(
-                    "Simulate Flooding (m)",
-                    min_value=0.0,
-                    max_value=1.5,
-                    value=0.0,
-                    step=0.05,
-                    help="Simulates water accumulation by raising a translucent water plane across the field.",
-                    key="slider_flood_sim"
-                )
-
-            fig_3d = create_3d_terrain_figure(
-                elevation=elevation,
-                metadata=metadata,
-                selected_route=selected_route,
-                vertical_exaggeration=vertical_exagg,
-                flood_depth_m=flood_depth_sim,
-                colormap="Viridis"
-            )
-            st.plotly_chart(fig_3d, use_container_width=True)
-            st.caption("💡 **3D Interaction:** Left-click & drag to rotate; scroll to zoom; double-click to reset. Cyan line = proposed trench.")
-    else:
-        with col_split_left:
-            st.markdown("#### 📈 Longitudinal Trench Elevation Cross-Section")
-            st.info("ℹ️ No critical waterlogging depressions or drainage trenches detected at current threshold settings.")
-        with col_split_right:
-            st.markdown("#### 🌐 Interactive 3D Bare-Earth Terrain Preview")
-            fig_3d = create_3d_terrain_figure(
-                elevation=elevation,
-                metadata=metadata,
-                selected_route=None,
-                vertical_exaggeration=10.0,
-                flood_depth_m=0.0,
-                colormap="Viridis"
-            )
-            st.plotly_chart(fig_3d, use_container_width=True)
-            st.caption("💡 **3D Interaction:** Left-click & drag to rotate; scroll to zoom; double-click to reset.")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
     # --- TABBED ENGINEERING SPECIFICATIONS TABLES ---
+    st.markdown("### 📋 Engineering Specification & Field Extraction Tables")
     tab_ditches_tbl, tab_routes_tbl, tab_sinks_tbl = st.tabs([
         "📡 Extracted Ditches & Culverts (Roelens LiDAR)",
         "📋 Candidate Drainage Routes Comparison Table",

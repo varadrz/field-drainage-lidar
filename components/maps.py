@@ -124,12 +124,11 @@ def create_terrain_map(
         tiles=None
     )
 
-    # 1. Base Dark Minimal (CartoDB) - Sleek default for dark mode
+    # 1. Base OpenStreetMap (Alternative)
     folium.TileLayer(
-        tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        attr="&copy; OpenStreetMap contributors &copy; CARTO",
-        subdomains="abcd",
-        name="Dark Minimal (CartoDB)",
+        tiles="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        attr="OpenStreetMap",
+        name="OpenStreetMap",
         overlay=False,
         control=True
     ).add_to(fmap)
@@ -143,17 +142,24 @@ def create_terrain_map(
         control=True
     ).add_to(fmap)
 
-    # 3. Base OpenStreetMap
+    # 3. Base Dark Minimal (CartoDB) - Active default dark basemap
     folium.TileLayer(
-        tiles="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        attr="OpenStreetMap",
-        name="OpenStreetMap",
+        tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        attr="&copy; OpenStreetMap contributors &copy; CARTO",
+        subdomains="abcd",
+        name="Dark Minimal (CartoDB)",
         overlay=False,
         control=True
     ).add_to(fmap)
 
     # Determine which layer to activate initially
-    is_elev_active = default_layer in ["Land Elevation Map", "Elevation Surface (DTM)"]
+    is_elev_active = default_layer in [
+        "Land Elevation Map",
+        "Elevation Surface (DTM)",
+        "Land Elevation Map (DTM)",
+        "Extracted Ditches & Culverts (LiDAR)",
+        "Proposed Surface Drainage Routes"
+    ]
     is_slope_active = default_layer in ["Land Slope (% Grade)", "Slope Map (% Grade)"]
     is_hs_active = default_layer in ["3D Land Shape (Hillshade)", "Hillshade (Shaded Relief)"]
     is_aspect_active = default_layer in ["Slope Direction (Aspect)", "Aspect Map (Direction)"]
@@ -367,10 +373,10 @@ def create_terrain_map(
             folium.CircleMarker(
                 location=[lat, lon],
                 radius=8,
-                color="#00f5d4",
-                weight=2,
+                color="#00E5FF",
+                weight=2.5,
                 fill=True,
-                fill_color="#00f5d4",
+                fill_color="#00E5FF",
                 fill_opacity=0.85,
                 tooltip=(
                     f"<b>Priority Sink {sink.sink_id} ({sink.severity})</b><br>"
@@ -388,12 +394,12 @@ def create_terrain_map(
             lat, lon = out.coord_wgs84
             folium.CircleMarker(
                 location=[lat, lon],
-                radius=7,
-                color="#ffffff",
-                weight=2,
+                radius=7.5,
+                color="#FFFFFF",
+                weight=2.5,
                 fill=True,
-                fill_color="#38bdf8",
-                fill_opacity=0.9,
+                fill_color="#2ECC71",
+                fill_opacity=0.95,
                 tooltip=(
                     f"<b>Field Outlet #{out.outlet_id}</b><br>"
                     f"Type: {out.outlet_type.replace('_', ' ').title()}<br>"
@@ -530,26 +536,162 @@ def create_terrain_map(
     legend.add_to(fmap)
 
     # 15. Add Top-Right Layer Control Switcher
-    folium.LayerControl(position="topright", collapsed=False).add_to(fmap)
+    folium.LayerControl(position="topright", collapsed=True).add_to(fmap)
 
-    # 16. Dark Theme Styling for Leaflet & Branca Legend
+    # 16. Floating Controls: Top-Right Toolbar, Bottom-Left Opacity Pill & Bottom-Right Vertical Scale Bar
+    elev_min_val = float(elevation_stats.min_elevation)
+    elev_max_val = float(elevation_stats.max_elevation)
+    elev_mid_val = (elev_min_val + elev_max_val) / 2.0
+    opacity_pct = int(layer_opacity * 100)
+
+    floating_ui_html = f"""
+    <!-- Floating Top-Right Map Toolbar -->
+    <div style="
+        position: absolute;
+        top: 12px;
+        left: 60px;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(20, 24, 31, 0.88);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid #232A35;
+        border-radius: 30px;
+        padding: 4px 10px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    ">
+        <button onclick="parent.postMessage({{type:'MAP_ZOOM_IN'}}, '*')" title="Zoom In (+)" style="
+            background: #1C222B; color: #F0F4F8; border: 1px solid #232A35; border-radius: 50%; width: 26px; height: 26px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; font-weight: bold;
+        ">+</button>
+        <button onclick="parent.postMessage({{type:'MAP_ZOOM_OUT'}}, '*')" title="Zoom Out (-)" style="
+            background: #1C222B; color: #F0F4F8; border: 1px solid #232A35; border-radius: 50%; width: 26px; height: 26px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; font-weight: bold;
+        ">&minus;</button>
+        <span style="color: #232A35;">|</span>
+        <span style="color: #8B949E; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;">
+            GIS Tools:
+        </span>
+        <span style="
+            background: rgba(46, 204, 113, 0.15); color: #2ECC71; border: 1px solid rgba(46, 204, 113, 0.35);
+            border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 600;
+        ">
+            🎯 Reset Extent
+        </span>
+        <span style="
+            background: rgba(0, 229, 255, 0.12); color: #00E5FF; border: 1px solid rgba(0, 229, 255, 0.3);
+            border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 600;
+        ">
+            🛰️ Basemap
+        </span>
+        <span style="
+            background: rgba(245, 158, 11, 0.12); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 600;
+        ">
+            📏 Measure
+        </span>
+        <span style="
+            background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.35);
+            border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 600;
+        ">
+            🌐 2D/3D Mode
+        </span>
+    </div>
+
+    <!-- Floating Bottom-Left Opacity Pill -->
+    <div style="
+        position: absolute;
+        bottom: 22px;
+        left: 14px;
+        z-index: 1000;
+        background: rgba(20, 24, 31, 0.88);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid #232A35;
+        border-radius: 20px;
+        padding: 5px 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+        color: #F0F4F8;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    ">
+        <span style="color: #8B949E; font-weight: 500;">Layer Opacity:</span>
+        <b style="color: #00E5FF; font-family: monospace;">{opacity_pct}%</b>
+    </div>
+
+    <!-- Floating Bottom-Right Vertical Elevation Legend -->
+    <div style="
+        position: absolute;
+        bottom: 22px;
+        right: 14px;
+        z-index: 1000;
+        background: rgba(20, 24, 31, 0.90);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid #232A35;
+        border-radius: 10px;
+        padding: 10px 12px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+        color: #F0F4F8;
+        font-family: sans-serif;
+        min-width: 135px;
+    ">
+        <div style="font-size: 10px; font-weight: 700; color: #8B949E; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px;">
+            ELEVATION (MSL)
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="
+                width: 10px; height: 80px; border-radius: 3px;
+                background: linear-gradient(to bottom, #A3E635 0%, #10B981 35%, #0D9488 65%, #1E3A8A 100%);
+                border: 1px solid rgba(255,255,255,0.1);
+            "></div>
+            <div style="display: flex; flex-direction: column; justify-content: space-between; height: 80px; font-family: monospace; font-size: 11px;">
+                <span style="color: #A3E635; font-weight: bold;">▲ High ({elev_max_val:.1f}m)</span>
+                <span style="color: #8B949E;">• Mid ({elev_mid_val:.1f}m)</span>
+                <span style="color: #38BDF8; font-weight: bold;">▼ Low ({elev_min_val:.1f}m)</span>
+            </div>
+        </div>
+    </div>
+    """
+    fmap.get_root().html.add_child(folium.Element(floating_ui_html))
+
+    # 17. Dark Theme Styling for Leaflet & Controls
     dark_css = """
     <style>
         .leaflet-container {
             background-color: #0b0d10 !important;
+            font-family: 'Inter', -apple-system, sans-serif !important;
         }
         .leaflet-control-layers {
-            background: #14181f !important;
+            background: rgba(20, 24, 31, 0.92) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
             color: #f0f4f8 !important;
-            border: 1px solid #2d3748 !important;
-            border-radius: 6px !important;
+            border: 1px solid #232a35 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
         }
         .leaflet-control-layers-expanded {
-            background: #14181f !important;
+            background: rgba(20, 24, 31, 0.95) !important;
             color: #f0f4f8 !important;
         }
         .leaflet-control-layers label {
             color: #f0f4f8 !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+        }
+        .leaflet-control-zoom a {
+            background-color: #14181F !important;
+            color: #00E5FF !important;
+            border-color: #232A35 !important;
+        }
+        .leaflet-control-zoom a:hover {
+            background-color: #1C222B !important;
+            color: #2ECC71 !important;
         }
         .caption text, svg text {
             fill: #f0f4f8 !important;
