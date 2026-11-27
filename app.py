@@ -40,121 +40,262 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for Professional Minimalist Dark Agronomic SaaS Styling
+# Custom CSS for Google Stitch-Standard Responsive Dark SaaS UI/UX
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* Main Container & Canvas */
+    .block-container {
+        padding-top: 1.8rem;
+        padding-bottom: 3.5rem;
+        max-width: 1400px;
+    }
+
+    /* Stitch Brand Header */
+    .stitch-header-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 1.2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
     .main-header {
         font-size: 2.15rem;
         font-weight: 700;
-        color: #2ecc71;
-        margin-bottom: 0.15rem;
-        letter-spacing: -0.5px;
+        background: linear-gradient(135deg, #10B981 0%, #34D399 50%, #06B6D4 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.6px;
+        line-height: 1.2;
     }
     .sub-header {
-        font-size: 1.0rem;
-        color: #94a3b8;
-        margin-bottom: 1.2rem;
+        font-size: 0.95rem;
+        color: #94A3B8;
+        font-weight: 400;
+        margin-top: 3px;
+    }
+    .stitch-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(16, 185, 129, 0.12);
+        color: #10B981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 9999px;
+        padding: 4px 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+    }
+
+    /* Stitch Floating Map HUD (Heads-Up Display) */
+    .stitch-hud {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 10px;
+        background: rgba(18, 23, 31, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 10px;
+        padding: 8px 14px;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+    .hud-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.78rem;
+        color: #E2E8F0;
+    }
+    .hud-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .dot-emerald { background: #10B981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.8); }
+    .dot-cyan { background: #06B6D4; box-shadow: 0 0 8px rgba(6, 182, 212, 0.8); }
+    .dot-blue { background: #38BDF8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.8); }
+    .dot-amber { background: #F59E0B; box-shadow: 0 0 8px rgba(245, 158, 11, 0.8); }
+    .dot-violet { background: #A855F7; box-shadow: 0 0 8px rgba(168, 85, 247, 0.8); }
+
+    /* Stitch Glass Cards */
+    .metric-card, .metric-card-alert, .metric-card-sink, .metric-card-stream {
+        background: #12171F;
+        border-radius: 12px;
+        padding: 16px 18px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+        transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .metric-card:hover, .metric-card-alert:hover, .metric-card-sink:hover, .metric-card-stream:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.6);
     }
     .metric-card {
-        background-color: #14181f;
-        border-radius: 8px;
-        padding: 14px 16px;
-        border: 1px solid #232a35;
-        border-left: 4px solid #2ecc71;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-        margin-bottom: 10px;
+        border-left: 4px solid #10B981;
     }
     .metric-card-alert {
-        background-color: #1a1510;
-        border-radius: 8px;
-        padding: 14px 16px;
-        border: 1px solid #372810;
-        border-left: 4px solid #f59e0b;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-        margin-bottom: 10px;
+        border-left: 4px solid #F59E0B;
+        background: #161512;
     }
     .metric-card-sink {
-        background-color: #0c1829;
-        border-radius: 8px;
-        padding: 14px 16px;
-        border: 1px solid #143254;
-        border-left: 4px solid #38bdf8;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-        margin-bottom: 10px;
+        border-left: 4px solid #38BDF8;
+        background: #0D1624;
     }
     .metric-card-stream {
-        background-color: #0d1f1d;
-        border-radius: 8px;
-        padding: 14px 16px;
-        border: 1px solid #134e48;
-        border-left: 4px solid #00f5d4;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-        margin-bottom: 10px;
+        border-left: 4px solid #00F5D4;
+        background: #0E1B1B;
     }
     .metric-label {
-        font-size: 0.76rem;
-        color: #94a3b8;
+        font-size: 0.74rem;
+        color: #94A3B8;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.6px;
     }
     .metric-value {
-        font-size: 1.45rem;
+        font-size: 1.55rem;
         font-weight: 700;
-        color: #f0f4f8;
-        margin-top: 2px;
+        color: #F8FAFC;
+        margin-top: 4px;
+        letter-spacing: -0.4px;
     }
     .metric-value-alert {
-        font-size: 1.45rem;
+        font-size: 1.55rem;
         font-weight: 700;
-        color: #fbbf24;
-        margin-top: 2px;
+        color: #FBBF24;
+        margin-top: 4px;
+        letter-spacing: -0.4px;
     }
     .metric-value-sink {
-        font-size: 1.45rem;
+        font-size: 1.55rem;
         font-weight: 700;
-        color: #38bdf8;
-        margin-top: 2px;
+        color: #38BDF8;
+        margin-top: 4px;
+        letter-spacing: -0.4px;
     }
     .metric-value-stream {
-        font-size: 1.45rem;
+        font-size: 1.55rem;
         font-weight: 700;
-        color: #00f5d4;
-        margin-top: 2px;
+        color: #00F5D4;
+        margin-top: 4px;
+        letter-spacing: -0.4px;
     }
+
+    /* Export Cards */
     .export-card {
-        background-color: #14181f;
-        border: 1px solid #232a35;
-        border-radius: 8px;
-        padding: 16px 18px;
-        margin-bottom: 12px;
+        background: #12171F;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
+    .export-card:hover {
+        border-color: rgba(255, 255, 255, 0.16);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Stitch Touch-Friendly Interactive Buttons */
     .stButton>button {
-        background-color: #14181f !important;
-        color: #2ecc71 !important;
-        border: 1px solid #2ecc71 !important;
-        border-radius: 6px !important;
+        background: #12171F !important;
+        color: #10B981 !important;
+        border: 1px solid rgba(16, 185, 129, 0.5) !important;
+        border-radius: 8px !important;
         font-weight: 600 !important;
+        min-height: 42px !important;
+        padding: 8px 16px !important;
+        transition: all 0.2s ease !important;
     }
     .stButton>button:hover {
-        background-color: #2ecc71 !important;
-        color: #0b0d10 !important;
-        box-shadow: 0 0 10px rgba(46, 204, 113, 0.4) !important;
+        background: #10B981 !important;
+        color: #090C10 !important;
+        border-color: #10B981 !important;
+        box-shadow: 0 0 16px rgba(16, 185, 129, 0.45) !important;
+        transform: translateY(-1px);
     }
     .stDownloadButton>button {
-        background-color: #14181f !important;
-        color: #00e5ff !important;
-        border: 1px solid #00e5ff !important;
-        border-radius: 6px !important;
+        background: #12171F !important;
+        color: #06B6D4 !important;
+        border: 1px solid rgba(6, 182, 212, 0.5) !important;
+        border-radius: 8px !important;
         font-weight: 600 !important;
+        min-height: 44px !important;
+        padding: 10px 18px !important;
+        transition: all 0.2s ease !important;
     }
     .stDownloadButton>button:hover {
-        background-color: #00e5ff !important;
-        color: #0b0d10 !important;
-        box-shadow: 0 0 10px rgba(0, 229, 255, 0.4) !important;
+        background: #06B6D4 !important;
+        color: #090C10 !important;
+        border-color: #06B6D4 !important;
+        box-shadow: 0 0 16px rgba(6, 182, 212, 0.45) !important;
+        transform: translateY(-1px);
     }
-    .stAlert {
-        border-radius: 8px;
+
+    /* Stitch Styled Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: 4px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        padding: 10px 18px;
+        color: #94A3B8;
+        font-weight: 600;
+        font-size: 0.9rem;
+        background: transparent;
+        transition: color 0.15s ease, background 0.15s ease;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #F8FAFC;
+        background: rgba(255, 255, 255, 0.04);
+    }
+    .stTabs [aria-selected="true"] {
+        color: #10B981 !important;
+        border-bottom: 2px solid #10B981 !important;
+    }
+
+    /* Mobile & Tablet Responsive Media Queries */
+    @media (max-width: 900px) {
+        .block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        .main-header {
+            font-size: 1.75rem !important;
+        }
+        .metric-value, .metric-value-alert, .metric-value-sink, .metric-value-stream {
+            font-size: 1.3rem !important;
+        }
+        .stitch-hud {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+        }
+    }
+    @media (max-width: 600px) {
+        .main-header {
+            font-size: 1.45rem !important;
+        }
+        .stButton>button, .stDownloadButton>button {
+            width: 100% !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -353,12 +494,18 @@ def get_cached_pdf_report(
 
 
 def main():
-    # Application Title & Subtitle
-    st.markdown('<div class="main-header">🌾 Field Drainage Using LiDAR</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="sub-header">Smart Farm Drainage Assistant &bull; Phase 6: Final Product (PDF Reports, GIS Exports, Comparison Mode &amp; UI Polish)</div>',
-        unsafe_allow_html=True
-    )
+    # Application Title & Subtitle (Google Stitch Standard)
+    st.markdown("""
+    <div class="stitch-header-wrap">
+        <div>
+            <div class="main-header">🌾 Field Drainage Using LiDAR</div>
+            <div class="sub-header">Autonomous Precision Agri-Drainage Engine &bull; Phase 6 Final Release</div>
+        </div>
+        <div class="stitch-badge">
+            <span style="font-size:12px;">⚡</span> Production GIS Ready
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # --- SIDEBAR CONTROLS ---
     with st.sidebar:
@@ -713,6 +860,17 @@ def main():
 
     with tab_master:
         st.markdown(f"#### 🗺️ Multi-Layer Field Drainage & Hydrology Map &bull; *{source_name}*")
+        
+        # Stitch Floating Heads-Up Display (HUD)
+        st.markdown(f"""
+        <div class="stitch-hud">
+            <div class="hud-item"><span class="hud-dot dot-emerald"></span><b>CRS:</b> {stats.crs_display}</div>
+            <div class="hud-item"><span class="hud-dot dot-cyan"></span><b>Spatial Res:</b> {stats.spatial_resolution_m:.2f} m/px</div>
+            <div class="hud-item"><span class="hud-dot dot-blue"></span><b>Core:</b> WhiteboxTools + Roelens (2018)</div>
+            <div class="hud-item"><span class="hud-dot dot-amber"></span><b>Min Gravity Grade:</b> &ge; {min_ditch_slope_pct:.2f}%</div>
+            <div class="hud-item"><span class="hud-dot dot-violet"></span><b>Data Mode:</b> {data_source_badge}</div>
+        </div>
+        """, unsafe_allow_html=True)
         st.caption("💡 Click the layer icon (top-right of the map) to toggle between Proposed Drainage Routes, Runoff Paths, Waterlogging Zones, DTM, Slope, and Sub-Basins.")
         
         with st.spinner("Rendering interactive field map..."):
@@ -749,6 +907,14 @@ def main():
 
     with tab_compare_view:
         st.markdown("#### ⚖️ Visual Comparison: Original Terrain vs. Waterlogging Risk vs. Drainage Alignment")
+        
+        st.markdown("""
+        <div class="stitch-hud">
+            <div class="hud-item"><span class="hud-dot dot-emerald"></span><b>Mode:</b> Split-Screen Hydrological Verification</div>
+            <div class="hud-item"><span class="hud-dot dot-amber"></span><b>Left View:</b> Bare-Earth Relief & Micro-Contours</div>
+            <div class="hud-item"><span class="hud-dot dot-cyan"></span><b>Right View:</b> Trapped Water Pits & Gravity Cut Path</div>
+        </div>
+        """, unsafe_allow_html=True)
         st.caption("Inspect how the engineered gravity drainage trench routes water out of low-lying depressions towards the field boundary.")
 
         compare_style = st.radio(
