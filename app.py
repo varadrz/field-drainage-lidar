@@ -21,7 +21,14 @@ from modules.drainage_recommendation import generate_drainage_plan, DrainagePlan
 from modules.lidar_processor import process_lidar_point_cloud, LidarProcessingResult, LidarMetadata
 from modules.drainage_extraction import run_ditch_extraction, DitchExtractionResult
 from modules.report_generator import generate_drainage_pdf_report
-from components.maps import create_terrain_map, create_focused_map, create_side_by_side_swipe_map
+try:
+    from components.maps import create_terrain_map, create_focused_map, create_side_by_side_swipe_map
+except ImportError:
+    import importlib
+    import components.maps
+    importlib.reload(components.maps)
+    from components.maps import create_terrain_map, create_focused_map, create_side_by_side_swipe_map
+
 from components.elevation_profile import create_trench_profile_figure
 from components.charts import create_3d_terrain_figure
 
