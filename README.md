@@ -1,122 +1,195 @@
-# Field Drainage Using LiDAR
-### *Intelligent LiDAR-Based Agricultural Field Drainage Planning System*
+# 🌾 Field Drainage Using LiDAR
+### *Intelligent LiDAR & Geospatial Agricultural Surface Drainage Decision System*
 
+[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![WhiteboxTools](https://img.shields.io/badge/Hydro_Engine-WhiteboxTools-2ECC71.svg)](https://www.whiteboxgeo.com/)
+[![laspy](https://img.shields.io/badge/Point_Cloud-laspy_%5Blazrs%5D-blue.svg)](https://laspy.readthedocs.io/)
+[![GeoPandas](https://img.shields.io/badge/Vectors-GeoPandas-139C5A.svg?logo=geopandas&logoColor=white)](https://geopandas.org/)
+[![Plotly 3D](https://img.shields.io/badge/3D_Engine-Plotly-3F4F75.svg?logo=plotly&logoColor=white)](https://plotly.com/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![WhiteboxTools](https://img.shields.io/badge/Hydro_Engine-WhiteboxTools-green.svg)](https://www.whiteboxgeo.com/)
-[![GeoPandas](https://img.shields.io/badge/Vectors-GeoPandas-teal.svg)](https://geopandas.org/)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
-[![ReportLab](https://img.shields.io/badge/PDF_Engine-ReportLab-orange.svg)](https://www.reportlab.com/)
-
-> **Notice:** This project is proprietary and protected by copyright. See [LICENSE](file:///C:/Users/Varad%20D/.gemini/antigravity/scratch/field-drainage-lidar/LICENSE) for terms. All rights reserved.
+[![Tests](https://img.shields.io/badge/Tests-32%20Passing-brightgreen.svg)](tests/)
 
 ---
 
-## Executive Summary
-Surface waterlogging is one of the primary drivers of yield loss, delayed sowing, root asphyxiation, and secondary soil salinization in Indian agriculture—particularly across clay-rich Vertisols (Black Cotton Soils) of Maharashtra, Madhya Pradesh, Gujarat, and the canal-irrigated command areas of Punjab, Haryana, and Andhra Pradesh. 
+## 📌 Executive Summary
 
-**Field Drainage Using LiDAR** is an intelligent, automated, 100% free-to-build geospatial decision-support system designed to plan precise surface drainage networks for agricultural holdings. By processing high-resolution LiDAR point clouds (`.las`/`.laz`) and Digital Elevation Models (DEMs), the system automatically:
-1. Filters bare-earth terrain and builds hydrologically conditioned Digital Terrain Models (DTMs).
-2. Delineates micro-catchments, D8 flow directions, flow accumulation pathways, and Topographic Wetness Indices (TWI).
-3. Detects genuine waterlogging depressions while filtering high-frequency DEM sensor noise.
-4. Extracts existing farm ditches and bridges severed culvert connections using the peer-reviewed **Roelens et al. (2018)** morphological workflow.
-5. Recommends optimal gravity-fed surface trench alignments to route standing water out of fields into natural drainage outlets.
-6. Delivers an interactive web GIS dashboard (Streamlit + Folium) and an automated, investor/agronomist-ready PDF Drainage Plan Report.
+Surface waterlogging and drainage congestion are primary drivers of crop failure, root asphyxiation, delayed sowing, and secondary soil salinization in agricultural holdings—especially across heavy clay soils (**Vertisols / Black Cotton Soils**) and canal command areas. Traditional manual land grading and drainage ditching often rely on subjective visual estimation, leading to inverted slopes, standing ponding pockets, and excessive excavation costs.
 
----
-
-## Key Capabilities & Features
-
-- **Multi-Format Terrain Ingestion:** Ingests unclassified or classified LiDAR point clouds (`.las`, `.laz`) via `laspy` and raster elevation models (GeoTIFF, Copernicus 30m, CartoDEM) via `rasterio`.
-- **Hydrological Conditioning & Sink Discrimination:** Distinguishes genuine ponding depressions from DEM artifacts using depth, area, and persistence filtering before selective breach depressions or sink filling.
-- **Morphological Ditch Extraction (Roelens et al., 2018):** Implements Relative Elevation Attribute (REA), Otsu automatic thresholding, directional morphological thinning (skeletonization), lowest-LiDAR-point snapping, and obstacle/culvert connectivity correction.
-- **Gravity-Fed Route Optimization:** Identifies natural pour points / field discharge boundaries and computes minimum-cost, positive-slope ditch alignments to minimize earthwork volume.
-- **Interactive Dual-Pane GIS Dashboard:** Interactive Streamlit interface featuring layer toggling (DTM, Hillshade, Slope, Flow Accumulation, Ditches, Waterlogging Hotspots, Recommended Routes) and side-by-side swipe comparison.
-- **Automated Field Drainage Plan Report:** Generates publication-grade PDF engineering reports detailing field slope distribution, ponding risk metrics, proposed cut-and-fill ditch lengths, and geo-referenced cartographic maps.
+**Field Drainage Using LiDAR** is an intelligent, automated, **100% free-to-deploy** geospatial decision-support application. It processes high-resolution airborne/drone LiDAR point clouds (`.las`, `.laz`) and bare-earth digital elevation models (DEMs/DTMs) to:
+1. **Classify and extract bare-earth ground returns** (ASPRS Class 2) while discarding vegetation canopy and field bund shrub noise.
+2. **Model hydrology and concentrated runoff**: D8 flow direction, flow accumulation, natural streams, and catchment sub-basins powered by WhiteboxTools.
+3. **Map genuine waterlogging depressions**: Distinguishes true ponding pockets from laser shot jitter and tillage roughness using depth, area, and volume thresholds.
+4. **Extract existing ditch networks (Roelens et al., 2018)**: Relative Elevation Attribute (REA), dynamic Otsu thresholding, morphological skeletonization, and **machine-learning culvert / driveway bridging**.
+5. **Recommend least-cost gravity-fed drainage routes**: Solves anisotropic cost surfaces to design optimal surface trench alignments from ponding pits to boundary outlets with guaranteed downhill slope ($\ge 0.2\%$, zero uphill sections) and exact earthwork volume estimates.
+6. **Deliver interactive 2D animated GIS maps & 3D terrain exploration**: Folium maps with speed-proportional `AntPath` water pulses and Plotly 3D terrain with vertical exaggeration and simulated rainfall/flooding.
 
 ---
 
-## Strict 3-Tier Free Data Strategy & Disclaimer
+## 🖼️ Dashboard & Application Showcase
 
-Access to aerial LiDAR is strictly restricted or non-existent for routine smallholder plots in India. To guarantee complete integrity, reproducibility, and 100% free execution without fabricated claims, this system operates on a transparent **3-Tier Data Architecture**:
+### 1. Multi-Layer Interactive GIS Viewport
+*Composite view featuring bare-earth DTM, extracted open ditches & bridged culverts, ponding waterlogging zones, and recommended least-cost gravity trenches.*
 
+![Multi-Layer GIS Dashboard](assets/dashboard_multi_view.png)
+
+---
+
+### 2. Longitudinal Trench Elevation Cross-Section Profile
+*Engineering cross-section along the recommended trench showing natural ground elevation vs. the engineered monotonic gravity bed invert ($0.20\%$ grade) and shaded excavation cut depths.*
+
+![Longitudinal Trench Profile](assets/trench_cross_section_profile.png)
+
+---
+
+### 3. Interactive 3D Bare-Earth Terrain Model
+*High-resolution 3D surface model with user-adjustable vertical exaggeration ($1\times\text{--}25\times$), 3D drainage trench centerline overlay, and interactive simulated flooding water surface.*
+
+![3D Terrain View](assets/3d_terrain_view.png)
+
+---
+
+### 4. Airborne LiDAR Point Cloud Inspection & ASPRS Classification
+*Classification breakdown showing bare-earth ground returns (ASPRS Class 2) filtered from tree and perimeter bund vegetation (Class 5), alongside point density and vertical return distribution.*
+
+![LiDAR Point Cloud Inspection](assets/lidar_point_cloud_inspection.png)
+
+---
+
+## ☁️ Can This Be Hosted Entirely for Free? **Yes! (100% Free)**
+
+The system was architected from the ground up to run on **100% free, open-source dependencies** without proprietary licenses (no ArcGIS, no MATLAB, no paid cloud APIs). It can be deployed in the cloud completely free of cost with zero maintenance:
+
+### Option 1: Streamlit Community Cloud (Recommended — 100% Free)
+- **Cost:** \$0 / month (Free forever tier).
+- **Features:** 1 GB container RAM, automated continuous deployment on `git push`, free HTTPS SSL, and custom subdomains (e.g. `field-drainage-lidar.streamlit.app`).
+- **WhiteboxTools & laspy compatibility:** Precompiled wheels for `laspy[lazrs]`, `rasterio`, `scipy`, and `whitebox` install automatically on Streamlit Cloud's Debian Linux environment.
+
+#### Deployment Steps:
+1. Fork or push this repository to your GitHub account: `https://github.com/<your-username>/field-drainage-lidar`.
+2. Visit [share.streamlit.io](https://share.streamlit.io/) and log in with your GitHub account.
+3. Click **"New app"**.
+4. Select:
+   - **Repository:** `<your-username>/field-drainage-lidar`
+   - **Branch:** `master`
+   - **Main file path:** `app.py`
+5. Click **"Deploy!"** Your application will be live in 2–3 minutes.
+
+### Option 2: Hugging Face Spaces (Alternative — 100% Free)
+- **Cost:** \$0 / month.
+- **Specs:** 16 GB RAM, 2 vCPUs on the free CPU Basic tier.
+- Create a Space, choose the **Streamlit** SDK, link your GitHub repository, and it builds and launches automatically.
+
+---
+
+## 🧪 Sample Datasets for Testing & Experimentation
+
+### 1. Built-in Instant One-Click Demos
+The application includes pre-generated synthetic benchmark datasets designed to simulate typical smallholder agricultural plots in Indian UTM CRS (`EPSG:32644`):
+- **`data/sample/synthetic_indian_farm.tif`**: 1-meter spatial resolution GeoTIFF covering a 5-acre field with a gentle $0.8\%$ planar slope, a central waterlogging depression, perimeter bunds (*medh/daul*), and a natural discharge outlet gap.
+- **`data/sample/synthetic_indian_farm.las`**: 100,000-point airborne LiDAR point cloud ($\sim 4.8\text{ pts/m}^2$) with ASPRS Class 2 (Ground) and Class 5 (Vegetation) returns, featuring a $7\text{ m}$ driveway / road plug crossing to test culvert connectivity bridging.
+
+### 2. Real-World Agricultural Sample Dataset (Radiant Earth / Source Cooperative)
+To experiment with real-world satellite imagery and agricultural land elevation from India, you can download sample GeoTIFF files from the **Radiant Earth AgriFieldNet India Competition** hosted on [Source Cooperative](https://source.coop/):
+
+🔗 **Direct Sample GeoTIFF URL:**  
+[https://data.source.coop/radiantearth/agrifieldnet-competition/source/ref_agrifieldnet_competition_v1_source_06d05/ref_agrifieldnet_competition_v1_source_06d05_B01_10m.tif](https://data.source.coop/radiantearth/agrifieldnet-competition/source/ref_agrifieldnet_competition_v1_source_06d05/ref_agrifieldnet_competition_v1_source_06d05_B01_10m.tif)
+
+#### Quick Download Command:
+```bash
+# Download the real-world agricultural test file directly into data/sample/
+curl -o data/sample/agrifieldnet_sample_10m.tif "https://data.source.coop/radiantearth/agrifieldnet-competition/source/ref_agrifieldnet_competition_v1_source_06d05/ref_agrifieldnet_competition_v1_source_06d05_B01_10m.tif"
 ```
-+-----------------------------------------------------------------------------------+
-|                           3-TIER DATA STRATEGY                                    |
-+-----------------------------------------------------------------------------------+
-| Tier 1: Satellite Macro DEM (Free Public Data)                                    |
-| - Source: Copernicus DEM GLO-30 (30m) & ISRO Bhuvan CartoDEM                      |
-| - Scope: Watershed delineation, regional macro-slope, valley context.             |
-| - Disclaimer: Explicitly labeled as SATELLITE DEM (cannot resolve micro-ditches). |
-+-----------------------------------------------------------------------------------+
-| Tier 2: Real Sub-Meter LiDAR Benchmark (Free Public Data)                          |
-| - Source: OpenTopography / USGS 3DEP (US/European Agricultural Testbeds)          |
-| - Scope: Algorithmic validation of sub-meter point cloud bare-earth extraction,   |
-|   Roelens ditch extraction, and centimeter-scale waterlogging sinks.              |
-+-----------------------------------------------------------------------------------+
-| Tier 3: Synthetic Indian Farm Model (Programmatically Generated)                  |
-| - Source: In-house programmatic NumPy/SciPy synthetic terrain generator.          |
-| - Scope: Simulates typical 2-to-5 hectare Indian agricultural fields featuring    |
-|   elevated field bunds (daul/medh), micro-depressions, and clogged boundary      |
-|   trenches with known ground truth for deterministic validation.                   |
-+-----------------------------------------------------------------------------------+
-```
+You can then upload `agrifieldnet_sample_10m.tif` directly into the web dashboard sidebar to test coordinate ingestion, CRS reprojection validation, and terrain slope analysis!
 
 ---
 
-## 100% Free Technology Stack
+## 🛠️ Complete Open-Source Technology Stack
 
-| Layer | Free Open-Source Component | Replaces (Commercial / Paid) |
+| Capability | Free Open-Source Library | Replaces (Commercial / Paid) |
 |---|---|---|
-| **Language & Environment** | Python 3.10+, NumPy, SciPy | MATLAB, SAS |
-| **Point Cloud Processing** | `laspy` (with `lazrs` / `laszip`), PDAL | TerraScan, FugroViewer, Global Mapper |
-| **Raster & Vector GIS** | `rasterio`, `geopandas`, `shapely`, `pyproj` | ArcGIS Pro, ArcPy, ERDAS IMAGINE |
-| **Hydrological Engine** | `whitebox` (WhiteboxTools Open Core) | ArcGIS Spatial Analyst / ArcHydro |
-| **Computer Vision / Morph** | `scikit-image`, `scikit-learn` | Commercial Photogrammetry Toolkits |
-| **Web GIS Dashboard** | `streamlit`, `folium`, `streamlit-folium` | ArcGIS Online, Web AppBuilder |
-| **Report Generation** | `reportlab`, `matplotlib` | ArcGIS Map Series, Paid Reporting APIs |
-| **External Verification** | QGIS (v3.28+ LTR) | Commercial Desktop GIS |
+| **Point Cloud Ingestion & Decompression** | `laspy` + `lazrs` (C/Rust engine) | TerraScan, FugroViewer, Global Mapper |
+| **Raster Ingestion & Spatial Math** | `rasterio`, `numpy`, `scipy` | ArcGIS Pro, ERDAS IMAGINE |
+| **Hydrological Processing Engine** | `whitebox` (WhiteboxTools Open Core) | ArcGIS Spatial Analyst / ArcHydro |
+| **Ditch Extraction & Computer Vision** | `scikit-image`, `scikit-learn` | Commercial Photogrammetry Toolkits |
+| **Vector Geometry & Networks** | `shapely`, `geopandas`, `networkx`, `pyproj` | ESRI ArcPy, FME |
+| **Interactive 2D Mapping** | `folium`, `streamlit-folium`, `AntPath` | ArcGIS Online, Leaflet Commercial |
+| **Interactive 3D Terrain** | `plotly` (`go.Surface`, `go.Scatter3d`) | Cesium Ion, ArcGIS 3D Scenes |
+| **Longitudinal Profiles** | `matplotlib` | Civil 3D Profile Tools |
+| **Application UI & Caching** | `streamlit` (`@st.cache_data`) | Custom Full-Stack React/Node |
 
 ---
 
-## Documentation Structure
-
-Comprehensive technical specifications and implementation blueprints are cataloged in the [`docs/`](file:///C:/Users/Varad%20D/.gemini/antigravity/scratch/field-drainage-lidar/docs) directory:
-
-1. [**01: Ideation & Requirements**](file:///C:/Users/Varad%20D/.gemini/antigravity/scratch/field-drainage-lidar/docs/01_IDEATION_AND_REQUIREMENTS.md)  
-   *Problem breakdown in Indian agriculture, user personas, functional/non-functional requirements, strict v1 boundaries, and QGIS verification protocols.*
-2. [**02: System Architecture**](file:///C:/Users/Varad%20D/.gemini/antigravity/scratch/field-drainage-lidar/docs/02_SYSTEM_ARCHITECTURE.md)  
-   *Six-module decoupled architecture, complete directory structure, headless GIS vs. UI separation, and rigorous Coordinate Reference System (CRS) metric management.*
-3. [**03: Algorithms & Data Flow**](file:///C:/Users/Varad%20D/.gemini/antigravity/scratch/field-drainage-lidar/docs/03_ALGORITHMS_AND_DATAFLOW.md)  
-   *End-to-end processing pipeline, sequence diagrams, Whitebox hydrological modeling, Roelens et al. (2018) ditch extraction, and depression vs. noise filtering.*
-4. [**04: Tech Stack & Data Strategy**](file:///C:/Users/Varad%20D/.gemini/antigravity/scratch/field-drainage-lidar/docs/04_TECH_STACK_AND_DATA_STRATEGY.md)  
-   *Detailed tooling justifications, API comparisons, and step-by-step acquisition guides for Copernicus GLO-30, OpenTopography, and the Synthetic Indian Farm generator.*
-5. [**05: Development Roadmap**](file:///C:/Users/Varad%20D/.gemini/antigravity/scratch/field-drainage-lidar/docs/05_DEVELOPMENT_ROADMAP.md)  
-   *Six-phase development plan with acceptance criteria, unit test milestones, and complete Streamlit UI layout and wireframe specifications.*
-
----
-
-## Quick Start (Preview & Exploration)
+## 🚀 Local Installation & Quickstart
 
 ```bash
-# Clone the repository (Private access only)
+# 1. Clone the repository
 git clone https://github.com/varadrz/field-drainage-lidar.git
 cd field-drainage-lidar
 
-# Setup Virtual Environment
+# 2. Create and activate a Python virtual environment (Python 3.10+)
 python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\Activate.ps1
+# On Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# On macOS / Linux:
+source venv/bin/activate
 
-# Install Dependencies
+# 3. Install 100% free dependencies
 pip install -r requirements.txt
 
-# Run the GIS Dashboard
+# 4. (Optional) Run test suite to verify all modules
+pytest
+
+# 5. Launch the Streamlit dashboard
 streamlit run app.py
+```
+
+The application will start immediately at `http://localhost:8501`.
+
+---
+
+## 🏛️ System Architecture
+
+```
+field-drainage-lidar/
+├── app.py                           # High-performance Streamlit web dashboard
+├── components/
+│   ├── maps.py                      # Multi-layer Folium Leaflet maps with animated AntPath flow
+│   ├── charts.py                    # Plotly 3D terrain surface with flood simulation
+│   └── elevation_profile.py         # Longitudinal trench cross-section profile generator
+├── modules/
+│   ├── data_loader.py               # Robust GeoTIFF loader & CRS validation
+│   ├── elevation_analysis.py        # Elevation relief and area metrics
+│   ├── terrain_analysis.py          # Horn 3x3 slope, aspect, hillshade, vector contours
+│   ├── hydrology.py                 # WhiteboxTools depression filling, D8 accumulation, streams
+│   ├── drainage_recommendation.py   # Least-cost path routing, monotonic invert profiling, cut/fill
+│   ├── lidar_processor.py           # laspy LAS/LAZ ingestion, ASPRS Class 2 filtering, 1m DTM
+│   └── drainage_extraction.py       # Roelens et al. (2018) REA, Otsu, skeletonization & culvert bridging
+├── scripts/
+│   ├── generate_synthetic_farm.py   # 1m synthetic GeoTIFF generator (EPSG:32644)
+│   ├── generate_synthetic_lidar.py  # 100k-point synthetic LAS generator with culvert gap
+│   └── export_readme_assets.py      # Automated generator for README visual assets
+├── tests/
+│   ├── test_elevation.py            # Phase 1 unit tests
+│   ├── test_terrain.py              # Phase 2 unit tests
+│   ├── test_hydrology.py            # Phase 3 unit tests
+│   ├── test_drainage.py             # Phase 4 unit tests
+│   └── test_lidar.py                # Phase 5 unit tests (32 total tests)
+└── requirements.txt                 # Pinned open-source dependencies
 ```
 
 ---
 
-## Intellectual Property & License
-Copyright (c) 2026 Varad Patil. All Rights Reserved.  
-This software, documentation, and architecture are proprietary. Strictly no permission is granted for copying, modifying, merging, publishing, distributing, sublicensing, or selling any part of this system without express prior written consent from the author.
+## 🔬 Scientific Methodology & References
 
+1. **Roelens, J., Höfle, B., Dondeyne, S., Orshoven, J. V., & Diels, J. (2018).** *Agricultural ditch extraction from airborne LiDAR data.* **Science of The Total Environment**, 634, 1378–1388. [https://doi.org/10.1016/j.scitotenv.2018.04.045](https://doi.org/10.1016/j.scitotenv.2018.04.045)
+2. **Lindsay, J. B. (2016).** *Whitebox GAT: A case study in open-source GIS software development.* **Computers & Geosciences**, 95, 75–84.
+3. **O'Callaghan, J. F., & Mark, D. M. (1984).** *The extraction of drainage networks from digital elevation data.* **Computer Vision, Graphics, and Image Processing**, 28(3), 323–344.
+4. **Horn, B. K. (1981).** *Hill shading and the reflectance map.* **Proceedings of the IEEE**, 69(1), 14–47.
+
+---
+
+## 📜 Intellectual Property & License
+
+Copyright (c) 2026 Varad Patil. All Rights Reserved.  
+This software, algorithms, and documentation are proprietary. See [LICENSE](LICENSE) for terms.
