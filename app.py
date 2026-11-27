@@ -488,6 +488,7 @@ def main():
     source_name = ""
     is_lidar = False
 
+    is_sample = (uploaded_file is None)
     if uploaded_file is not None:
         file_bytes = uploaded_file.getvalue()
         source_key = f"upload_{uploaded_file.name}_{len(file_bytes)}"
@@ -676,11 +677,12 @@ def main():
         """, unsafe_allow_html=True)
 
     with kpi_col4:
+        slope_desc = "Nearly Level" if terrain_summary.mean_slope_pct < 1.0 else ("Gentle Slope" if terrain_summary.mean_slope_pct < 2.5 else "Moderate Slope")
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-label">Average Slope</div>
             <div class="metric-value">{terrain_summary.mean_slope_pct:.2f}%</div>
-            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">Max: {terrain_summary.max_slope_pct:.1f}% &bull; {terrain_summary.slope_severity}</div>
+            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">Max: {terrain_summary.max_slope_pct:.1f}% &bull; {slope_desc}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -938,61 +940,78 @@ def main():
     st.markdown("### 📐 Trench Elevation Cross-Section & 3D Topographic Exploration")
     col_split_left, col_split_right = st.columns([1, 1])
 
-    route_options = {r.route_id: r for r in drainage_plan.routes}
+    if drainage_plan.routes and drainage_plan.best_route:
+        route_options = {r.route_id: r for r in drainage_plan.routes}
 
-    with col_split_left:
-        st.markdown("#### 📈 Longitudinal Trench Elevation Cross-Section")
-        selected_route_id = st.selectbox(
-            "Select Drainage Channel Route:",
-            options=list(route_options.keys()),
-            index=0,
-            key="select_route_profile",
-            format_func=lambda rid: f"{rid} {'⭐ [Recommended]' if route_options[rid].is_recommended else ''} (Length: {route_options[rid].length_m:.1f} m, Cut: {route_options[rid].max_cut_depth_m:.2f} m)"
-        )
-        selected_route = route_options[selected_route_id]
-        fig_profile = create_trench_profile_figure(selected_route)
-        st.pyplot(fig_profile, use_container_width=True)
-        st.caption(
-            f"ℹ️ **Invert Profile for {selected_route.route_id}:** Starting at waterlogging pit ({selected_route.start_elev_m:.2f} m), "
-            f"the ditch maintains a continuous gravity grade of {selected_route.bed_slope_pct:.2f}% to the outlet "
-            f"(outlet bed: {selected_route.outlet_bed_elev_m:.2f} m, ground: {selected_route.end_elev_m:.2f} m). "
-            f"Max cut: {selected_route.max_cut_depth_m:.2f} m &bull; Earthwork: {selected_route.earthwork_vol_m3:,.1f} m³."
-        )
-
-    with col_split_right:
-        st.markdown("#### 🌐 Interactive 3D Bare-Earth Terrain Preview")
-        c3_sub1, c3_sub2 = st.columns(2)
-        with c3_sub1:
-            vertical_exagg = st.slider(
-                "Vertical Relief Exaggeration",
-                min_value=1.0,
-                max_value=25.0,
-                value=10.0,
-                step=1.0,
-                help="Magnifies vertical relief to make micro-topography, bunds, and waterlogging hollows clearly visible in 3D.",
-                key="slider_vert_exagg"
+        with col_split_left:
+            st.markdown("#### 📈 Longitudinal Trench Elevation Cross-Section")
+            selected_route_id = st.selectbox(
+                "Select Drainage Channel Route:",
+                options=list(route_options.keys()),
+                index=0,
+                key="select_route_profile",
+                format_func=lambda rid: f"{rid} {'⭐ [Recommended]' if route_options[rid].is_recommended else ''} (Length: {route_options[rid].length_m:.1f} m, Cut: {route_options[rid].max_cut_depth_m:.2f} m)"
             )
-        with c3_sub2:
-            flood_depth_sim = st.slider(
-                "Simulate Flooding (m)",
-                min_value=0.0,
-                max_value=1.5,
-                value=0.0,
-                step=0.05,
-                help="Simulates water accumulation by raising a translucent water plane across the field.",
-                key="slider_flood_sim"
+            selected_route = route_options[selected_route_id]
+            fig_profile = create_trench_profile_figure(selected_route)
+            st.pyplot(fig_profile, use_container_width=True)
+            st.caption(
+                f"ℹ️ **Invert Profile for {selected_route.route_id}:** Starting at waterlogging pit ({selected_route.start_elev_m:.2f} m), "
+                f"the ditch maintains a continuous gravity grade of {selected_route.bed_slope_pct:.2f}% to the outlet "
+                f"(outlet bed: {selected_route.outlet_bed_elev_m:.2f} m, ground: {selected_route.end_elev_m:.2f} m). "
+                f"Max cut: {selected_route.max_cut_depth_m:.2f} m &bull; Earthwork: {selected_route.earthwork_vol_m3:,.1f} m³."
             )
 
-        fig_3d = create_3d_terrain_figure(
-            elevation=elevation,
-            metadata=metadata,
-            selected_route=selected_route,
-            vertical_exaggeration=vertical_exagg,
-            flood_depth_m=flood_depth_sim,
-            colormap="Viridis"
-        )
-        st.plotly_chart(fig_3d, use_container_width=True)
-        st.caption("💡 **3D Interaction:** Left-click & drag to rotate; scroll to zoom; double-click to reset. Cyan line = proposed trench.")
+        with col_split_right:
+            st.markdown("#### 🌐 Interactive 3D Bare-Earth Terrain Preview")
+            c3_sub1, c3_sub2 = st.columns(2)
+            with c3_sub1:
+                vertical_exagg = st.slider(
+                    "Vertical Relief Exaggeration",
+                    min_value=1.0,
+                    max_value=25.0,
+                    value=10.0,
+                    step=1.0,
+                    help="Magnifies vertical relief to make micro-topography, bunds, and waterlogging hollows clearly visible in 3D.",
+                    key="slider_vert_exagg"
+                )
+            with c3_sub2:
+                flood_depth_sim = st.slider(
+                    "Simulate Flooding (m)",
+                    min_value=0.0,
+                    max_value=1.5,
+                    value=0.0,
+                    step=0.05,
+                    help="Simulates water accumulation by raising a translucent water plane across the field.",
+                    key="slider_flood_sim"
+                )
+
+            fig_3d = create_3d_terrain_figure(
+                elevation=elevation,
+                metadata=metadata,
+                selected_route=selected_route,
+                vertical_exaggeration=vertical_exagg,
+                flood_depth_m=flood_depth_sim,
+                colormap="Viridis"
+            )
+            st.plotly_chart(fig_3d, use_container_width=True)
+            st.caption("💡 **3D Interaction:** Left-click & drag to rotate; scroll to zoom; double-click to reset. Cyan line = proposed trench.")
+    else:
+        with col_split_left:
+            st.markdown("#### 📈 Longitudinal Trench Elevation Cross-Section")
+            st.info("ℹ️ No critical waterlogging depressions or drainage trenches detected at current threshold settings.")
+        with col_split_right:
+            st.markdown("#### 🌐 Interactive 3D Bare-Earth Terrain Preview")
+            fig_3d = create_3d_terrain_figure(
+                elevation=elevation,
+                metadata=metadata,
+                selected_route=None,
+                vertical_exaggeration=10.0,
+                flood_depth_m=0.0,
+                colormap="Viridis"
+            )
+            st.plotly_chart(fig_3d, use_container_width=True)
+            st.caption("💡 **3D Interaction:** Left-click & drag to rotate; scroll to zoom; double-click to reset.")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
