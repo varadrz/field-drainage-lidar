@@ -330,30 +330,92 @@ st.markdown("""
         transform: translateY(-1px);
     }
 
-    /* Tabs Styling */
+    /* Full-Width High-Visibility Segmented Navigation Tabs */
+    div[data-testid="stTabs"] {
+        width: 100% !important;
+    }
+    div[data-testid="stTabs"] div[role="tablist"],
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        border-bottom: 1px solid #232A35;
-        padding-bottom: 4px;
-        margin-bottom: 12px;
+        display: flex !important;
+        width: 100% !important;
+        background: #14181F !important;
+        border: 1px solid #232A35 !important;
+        border-radius: 12px !important;
+        padding: 8px !important;
+        gap: 12px !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+        margin: 10px 0 24px 0 !important;
+        overflow: visible !important;
+        align-items: stretch !important;
     }
+    div[data-testid="stTabs"] div[role="tablist"]::after {
+        display: none !important;
+    }
+    div[data-testid="stTabs"] button[data-testid="stTab"],
+    div[data-testid="stTabs"] [role="tab"],
     .stTabs [data-baseweb="tab"] {
-        border-radius: 8px 8px 0 0;
-        padding: 10px 18px;
-        color: #8B949E;
-        font-weight: 600;
-        font-size: 0.9rem;
-        background: transparent;
-        transition: color 0.15s ease, background 0.15s ease;
-    }
-    .stTabs [data-baseweb="tab"]:hover {
-        color: #F0F4F8;
-        background: rgba(255, 255, 255, 0.04);
-    }
-    .stTabs [aria-selected="true"] {
-        color: #2ECC71 !important;
+        flex: 1 1 0% !important;
+        flex-grow: 1 !important;
+        width: 25% !important;
+        min-width: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        min-height: 56px !important;
+        height: 56px !important;
+        padding: 12px 18px !important;
         background: #1C222B !important;
-        border-bottom: 2px solid #2ECC71 !important;
+        color: #94A3B8 !important;
+        border: 1.5px solid #283340 !important;
+        border-radius: 9px !important;
+        font-size: 1.06rem !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+        transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        white-space: nowrap !important;
+        position: relative !important;
+    }
+    div[data-testid="stTabs"] button[data-testid="stTab"]:hover,
+    div[data-testid="stTabs"] [role="tab"]:hover,
+    div[data-testid="stTabs"] [role="tab"][data-hovered],
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #F0F4F8 !important;
+        background: #242D3A !important;
+        border-color: #3E4D61 !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    }
+    div[data-testid="stTabs"] button[data-testid="stTab"][aria-selected="true"],
+    div[data-testid="stTabs"] button[data-testid="stTab"][data-selected="true"],
+    div[data-testid="stTabs"] [role="tab"][aria-selected="true"],
+    div[data-testid="stTabs"] [role="tab"][data-selected],
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        color: #2ECC71 !important;
+        background: linear-gradient(135deg, rgba(46, 204, 113, 0.24) 0%, rgba(0, 229, 255, 0.16) 100%) !important;
+        border: 2px solid #2ECC71 !important;
+        box-shadow: 0 0 18px rgba(46, 204, 113, 0.38), inset 0 0 12px rgba(46, 204, 113, 0.14) !important;
+        font-weight: 800 !important;
+        transform: translateY(-1px) !important;
+    }
+    div[data-testid="stTabs"] [role="tab"] *,
+    .stTabs [data-baseweb="tab"] div, 
+    .stTabs [data-baseweb="tab"] p, 
+    .stTabs [data-baseweb="tab"] span {
+        font-size: 1.06rem !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.2px !important;
+    }
+    div[data-testid="stTabs"] [role="tab"][aria-selected="true"] *,
+    div[data-testid="stTabs"] [role="tab"][data-selected] * {
+        color: #2ECC71 !important;
+        font-weight: 800 !important;
+    }
+    .react-aria-SelectionIndicator,
+    .stTabs [data-baseweb="tab-highlight"], 
+    .stTabs [data-baseweb="tab-border"] {
+        display: none !important;
     }
 
     /* Bottom Analytics Split Panel Cards */
@@ -400,6 +462,20 @@ st.markdown("""
         .kpi-strip {
             grid-template-columns: repeat(2, 1fr) !important;
         }
+        div[data-testid="stTabs"] button[data-testid="stTab"],
+        div[data-testid="stTabs"] [role="tab"],
+        .stTabs [data-baseweb="tab"] {
+            font-size: 0.92rem !important;
+            padding: 8px 12px !important;
+            min-height: 48px !important;
+            height: 48px !important;
+        }
+        div[data-testid="stTabs"] [role="tab"] *,
+        .stTabs [data-baseweb="tab"] div, 
+        .stTabs [data-baseweb="tab"] p, 
+        .stTabs [data-baseweb="tab"] span {
+            font-size: 0.92rem !important;
+        }
     }
     @media (max-width: 640px) {
         .kpi-strip {
@@ -409,6 +485,15 @@ st.markdown("""
             flex-direction: column !important;
             align-items: flex-start !important;
             gap: 8px !important;
+        }
+        div[data-testid="stTabs"] div[role="tablist"],
+        .stTabs [data-baseweb="tab-list"] {
+            flex-direction: column !important;
+        }
+        div[data-testid="stTabs"] button[data-testid="stTab"],
+        div[data-testid="stTabs"] [role="tab"],
+        .stTabs [data-baseweb="tab"] {
+            width: 100% !important;
         }
     }
 </style>
