@@ -5,6 +5,7 @@ Interactive Streamlit Dashboard & WhiteboxTools Hydrological Engine
 Optimized for high-performance caching and zero-rerun interactive mapping.
 """
 
+import json
 import os
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any
@@ -19,7 +20,8 @@ from modules.hydrology import run_hydrological_analysis, HydrologyResult
 from modules.drainage_recommendation import generate_drainage_plan, DrainagePlanResult, DrainageRoute
 from modules.lidar_processor import process_lidar_point_cloud, LidarProcessingResult, LidarMetadata
 from modules.drainage_extraction import run_ditch_extraction, DitchExtractionResult
-from components.maps import create_terrain_map
+from modules.report_generator import generate_drainage_pdf_report
+from components.maps import create_terrain_map, create_focused_map, create_side_by_side_swipe_map
 from components.elevation_profile import create_trench_profile_figure
 from components.charts import create_3d_terrain_figure
 
@@ -31,83 +33,118 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for Professional Minimalist Dark Agronomic Styling
+# Custom CSS for Professional Minimalist Dark Agronomic SaaS Styling
 st.markdown("""
 <style>
     .main-header {
-        font-size: 2.1rem;
+        font-size: 2.15rem;
         font-weight: 700;
         color: #2ecc71;
-        margin-bottom: 0.2rem;
+        margin-bottom: 0.15rem;
         letter-spacing: -0.5px;
     }
     .sub-header {
-        font-size: 1.02rem;
+        font-size: 1.0rem;
         color: #94a3b8;
         margin-bottom: 1.2rem;
     }
     .metric-card {
         background-color: #14181f;
         border-radius: 8px;
-        padding: 12px 14px;
-        border: 1px solid #1f2937;
-        border-left: 5px solid #2ecc71;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        margin-bottom: 8px;
+        padding: 14px 16px;
+        border: 1px solid #232a35;
+        border-left: 4px solid #2ecc71;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+        margin-bottom: 10px;
     }
     .metric-card-alert {
         background-color: #1a1510;
         border-radius: 8px;
-        padding: 12px 14px;
+        padding: 14px 16px;
         border: 1px solid #372810;
-        border-left: 5px solid #f59e0b;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        margin-bottom: 8px;
+        border-left: 4px solid #f59e0b;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+        margin-bottom: 10px;
     }
     .metric-card-sink {
         background-color: #0c1829;
         border-radius: 8px;
-        padding: 12px 14px;
+        padding: 14px 16px;
         border: 1px solid #143254;
-        border-left: 5px solid #38bdf8;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        margin-bottom: 8px;
+        border-left: 4px solid #38bdf8;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+        margin-bottom: 10px;
     }
     .metric-card-stream {
         background-color: #0d1f1d;
         border-radius: 8px;
-        padding: 12px 14px;
+        padding: 14px 16px;
         border: 1px solid #134e48;
-        border-left: 5px solid #00f5d4;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        margin-bottom: 8px;
+        border-left: 4px solid #00f5d4;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+        margin-bottom: 10px;
     }
     .metric-label {
-        font-size: 0.78rem;
+        font-size: 0.76rem;
         color: #94a3b8;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.6px;
     }
     .metric-value {
-        font-size: 1.35rem;
+        font-size: 1.45rem;
         font-weight: 700;
         color: #f0f4f8;
+        margin-top: 2px;
     }
     .metric-value-alert {
-        font-size: 1.35rem;
+        font-size: 1.45rem;
         font-weight: 700;
         color: #fbbf24;
+        margin-top: 2px;
     }
     .metric-value-sink {
-        font-size: 1.35rem;
+        font-size: 1.45rem;
         font-weight: 700;
         color: #38bdf8;
+        margin-top: 2px;
     }
     .metric-value-stream {
-        font-size: 1.35rem;
+        font-size: 1.45rem;
         font-weight: 700;
         color: #00f5d4;
+        margin-top: 2px;
+    }
+    .export-card {
+        background-color: #14181f;
+        border: 1px solid #232a35;
+        border-radius: 8px;
+        padding: 16px 18px;
+        margin-bottom: 12px;
+    }
+    .stButton>button {
+        background-color: #14181f !important;
+        color: #2ecc71 !important;
+        border: 1px solid #2ecc71 !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+    }
+    .stButton>button:hover {
+        background-color: #2ecc71 !important;
+        color: #0b0d10 !important;
+        box-shadow: 0 0 10px rgba(46, 204, 113, 0.4) !important;
+    }
+    .stDownloadButton>button {
+        background-color: #14181f !important;
+        color: #00e5ff !important;
+        border: 1px solid #00e5ff !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+    }
+    .stDownloadButton>button:hover {
+        background-color: #00e5ff !important;
+        color: #0b0d10 !important;
+        box-shadow: 0 0 10px rgba(0, 229, 255, 0.4) !important;
     }
     .stAlert {
         border-radius: 8px;
@@ -259,11 +296,60 @@ def get_cached_ditch_extraction(
     )
 
 
+@st.cache_data(show_spinner=False)
+def get_cached_pdf_report(
+    source_key: str,
+    data_source_badge: str,
+    field_plot_name: str,
+    flow_accum_threshold: float = 80.0,
+    min_waterlogging_depth_m: float = 0.05,
+    min_waterlogging_area_m2: float = 10.0,
+    min_bed_slope_pct: float = 0.20,
+    file_bytes: Optional[bytes] = None,
+    is_lidar: bool = False
+) -> bytes:
+    """Caches compilation of the publication-grade PDF drainage feasibility report."""
+    if is_lidar:
+        lidar_res = get_cached_lidar_processing(source_key, file_bytes)
+        elevation = lidar_res.elevation_array
+        metadata = lidar_res.metadata
+        stats = compute_elevation_stats(elevation, metadata)
+    else:
+        elevation, metadata, stats = get_cached_elevation_and_stats(source_key, file_bytes)
+
+    terrain_summary, *_ = get_cached_terrain_analysis(source_key, min_waterlogging_depth_m, 0.5, file_bytes)
+    hydro_result = get_cached_hydrological_analysis(source_key, flow_accum_threshold, min_waterlogging_depth_m, file_bytes)
+    drainage_plan = get_cached_drainage_plan(
+        source_key, flow_accum_threshold, min_waterlogging_depth_m, min_waterlogging_area_m2, min_bed_slope_pct, 0.5, file_bytes
+    )
+    ditch_result = get_cached_ditch_extraction(source_key, 3.0, file_bytes, is_lidar)
+
+    out_dir = Path("outputs/reports")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    pdf_out = out_dir / f"{Path(source_key).stem}_drainage_plan.pdf"
+
+    generate_drainage_pdf_report(
+        output_pdf_path=pdf_out,
+        dem_array=elevation,
+        metadata=metadata,
+        elev_stats=stats,
+        terrain_summary=terrain_summary,
+        hydro_result=hydro_result,
+        drainage_plan=drainage_plan,
+        ditch_result=ditch_result,
+        data_source_type=data_source_badge,
+        project_name="Agricultural Surface Drainage Feasibility Plan",
+        field_plot_id=field_plot_name
+    )
+    with open(pdf_out, "rb") as f:
+        return f.read()
+
+
 def main():
     # Application Title & Subtitle
     st.markdown('<div class="main-header">🌾 Field Drainage Using LiDAR</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="sub-header">Smart Farm Drainage Assistant &bull; Phase 5: Real LiDAR (.las/.laz) Processing &amp; Research-Backed Ditch Extraction</div>',
+        '<div class="sub-header">Smart Farm Drainage Assistant &bull; Phase 6: Final Product (PDF Reports, GIS Exports, Comparison Mode &amp; UI Polish)</div>',
         unsafe_allow_html=True
     )
 
@@ -548,361 +634,458 @@ def main():
     else:
         st.success(f"✅ **Accurate Metric Map:** Measured in **meters** ({stats.crs_display}) &bull; Ground detail: **{stats.spatial_resolution_m:.2f} m per pixel**")
 
-    # --- KPI METRIC CARDS (ELEVATION & TERRAIN) ---
-    st.markdown("### 📊 Field Elevation & Land Relief")
-    m1, m2, m3, m4, m5, m6 = st.columns(6)
-    
-    with m1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Lowest Point</div>
-            <div class="metric-value">{stats.min_elevation:.2f} m</div>
-        </div>
-        """, unsafe_allow_html=True)
+    # --- TOP ROW: 4 CLEAN AGRONOMIC & ENGINEERING KPI METRIC CARDS ---
+    st.markdown("### 📊 Field Overview & Hydraulic Health Indicators")
+    best_r = drainage_plan.best_route
+    kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
 
-    with m2:
+    with kpi_col1:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Highest Point</div>
-            <div class="metric-value">{stats.max_elevation:.2f} m</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with m3:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Height Difference</div>
-            <div class="metric-value">{stats.elevation_range:.2f} m</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with m4:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Average Height</div>
-            <div class="metric-value">{stats.mean_elevation:.2f} m</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with m5:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Total Field Area</div>
+            <div class="metric-label">Field Area</div>
             <div class="metric-value">{stats.area_acres:.2f} ac</div>
+            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">{stats.area_ha:.2f} Ha &bull; {stats.area_sq_m:,.0f} m²</div>
         </div>
         """, unsafe_allow_html=True)
 
-    with m6:
+    with kpi_col2:
         st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">Map Detail</div>
-            <div class="metric-value">{stats.spatial_resolution_m:.1f} m/px</div>
+        <div class="metric-card-sink">
+            <div class="metric-label">Waterlogging Risk</div>
+            <div class="metric-value-sink">{hydro_result.waterlogging_area_pct:.1f}% Field</div>
+            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">{hydro_result.total_waterlogging_volume_m3:,.0f} m³ trapped &bull; {hydro_result.max_waterlogging_depth_cm:.1f} cm max</div>
         </div>
         """, unsafe_allow_html=True)
 
-    # --- PHASE 3 HYDROLOGY & RUNOFF SUMMARY PANEL ---
-    st.markdown("### 💧 Hydrological Runoff & Waterlogging Vulnerability Panel")
-    h1, h2, h3, h4, h5 = st.columns(5)
-
-    with h1:
+    with kpi_col3:
+        best_len_str = f"{best_r.length_m:,.1f} m" if best_r else "No Sink"
+        best_slope_str = f"{best_r.bed_slope_pct:.2f}% grade" if best_r else "N/A"
         st.markdown(f"""
         <div class="metric-card-stream">
-            <div class="metric-label">Natural Runoff Channels</div>
-            <div class="metric-value-stream">{hydro_result.total_stream_length_m:,.0f} m</div>
+            <div class="metric-label">Recommended Channel</div>
+            <div class="metric-value-stream">{best_len_str}</div>
+            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">Bed Slope: {best_slope_str} &bull; Gravity Outflow</div>
         </div>
         """, unsafe_allow_html=True)
 
-    with h2:
-        st.markdown(f"""
-        <div class="metric-card-sink">
-            <div class="metric-label">Max Ponding Depth</div>
-            <div class="metric-value-sink">{hydro_result.max_waterlogging_depth_cm:.1f} cm</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with h3:
-        st.markdown(f"""
-        <div class="metric-card-sink">
-            <div class="metric-label">Ponding Surface Area</div>
-            <div class="metric-value-sink">{hydro_result.waterlogging_area_acres:.2f} ac</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with h4:
-        st.markdown(f"""
-        <div class="metric-card-sink">
-            <div class="metric-label">Trapped Water Volume</div>
-            <div class="metric-value-sink">{hydro_result.total_waterlogging_volume_m3:,.0f} m³</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with h5:
+    with kpi_col4:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Field Sub-Catchments</div>
-            <div class="metric-value">{hydro_result.sub_basin_count} basins</div>
+            <div class="metric-label">Average Slope</div>
+            <div class="metric-value">{terrain_summary.mean_slope_pct:.2f}%</div>
+            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">Max: {terrain_summary.max_slope_pct:.1f}% &bull; {terrain_summary.slope_severity}</div>
         </div>
         """, unsafe_allow_html=True)
+
+    # Auxiliary Elevation & Hydrology Metrics (Collapsible)
+    with st.expander("ℹ️ View Additional Relief, Sub-Basin & Stream Metrics", expanded=False):
+        ax1, ax2, ax3, ax4, ax5, ax6 = st.columns(6)
+        with ax1:
+            st.metric("Lowest Point", f"{stats.min_elevation:.2f} m")
+        with ax2:
+            st.metric("Highest Point", f"{stats.max_elevation:.2f} m")
+        with ax3:
+            st.metric("Relief Range", f"{stats.elevation_range:.2f} m")
+        with ax4:
+            st.metric("Average Height", f"{stats.mean_elevation:.2f} m")
+        with ax5:
+            st.metric("Natural Runoff Channels", f"{hydro_result.total_stream_length_m:,.0f} m")
+        with ax6:
+            st.metric("Field Sub-Catchments", f"{hydro_result.sub_basin_count} basins")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- INTERACTIVE MAP VIEWPORT (OPTIMIZED WITH RETURNED_OBJECTS=[]) ---
-    st.markdown(f"### 🗺️ Interactive Field Drainage & Water Flow Map &bull; *{source_name}*")
-    st.caption("💡 Tip: Click the layer icon in the top-right of the map to toggle between Proposed Drainage Routes, Runoff Paths, Waterlogging Zones, DTM, Slope, and Sub-Basins.")
-    
-    with st.spinner("Rendering interactive field map..."):
-        fmap = create_terrain_map(
-            elevation=elevation,
-            metadata=metadata,
-            elevation_stats=stats,
-            terrain_summary=terrain_summary,
-            slope_pct=slope_pct,
-            aspect=aspect,
-            hillshade=hillshade,
-            depression_depth=hydro_result.depression_depth_array,
-            contour_geojson=contour_geojson,
-            flow_accum=hydro_result.flow_accum_array,
-            streams_geojson=hydro_result.streams_geojson,
-            basins_geojson=hydro_result.basins_geojson,
-            drainage_routes=drainage_plan.routes,
-            priority_sinks=drainage_plan.priority_sinks,
-            candidate_outlets=drainage_plan.candidate_outlets,
-            extracted_ditches_geojson=ditch_result.ditches_geojson,
-            reconnected_culverts_geojson=ditch_result.culverts_geojson,
-            colormap_name=colormap_choice,
-            layer_opacity=opacity_slider,
-            default_layer=default_layer_choice,
-            animate_flow=animate_flow_toggle
-        )
-        st_folium(
-            fmap,
-            width="100%",
-            height=570,
-            returned_objects=[],
-            key="field_drainage_folium_map"
-        )
+    # --- MAIN VIEWPORT: MASTER GIS, COMPARISON MODE & EXPORTS TABS ---
+    tab_master, tab_compare_view, tab_exports = st.tabs([
+        "🗺️ Interactive GIS Master View",
+        "⚖️ Visual Comparison Mode",
+        "📑 Reports & GIS Exports (QGIS Ready)"
+    ])
 
-    # --- PHASE 4 DRAINAGE RECOMMENDATIONS & TRENCH PLANNER ---
-    st.markdown("### 🚜 Recommended Surface Drainage Channels (Phase 4)")
-    
-    if drainage_plan.best_route:
-        best_r = drainage_plan.best_route
-        p1, p2, p3, p4, p5 = st.columns(5)
+    with tab_master:
+        st.markdown(f"#### 🗺️ Multi-Layer Field Drainage & Hydrology Map &bull; *{source_name}*")
+        st.caption("💡 Click the layer icon (top-right of the map) to toggle between Proposed Drainage Routes, Runoff Paths, Waterlogging Zones, DTM, Slope, and Sub-Basins.")
         
-        with p1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Recommended Channel</div>
-                <div class="metric-value">{best_r.route_id}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with p2:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Channel Length</div>
-                <div class="metric-value">{best_r.length_m:.1f} m</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with p3:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Bed Invert Grade</div>
-                <div class="metric-value">{best_r.bed_slope_pct:.2f}%</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with p4:
-            st.markdown(f"""
-            <div class="metric-card-alert">
-                <div class="metric-label">Max Trench Depth</div>
-                <div class="metric-value-alert">{best_r.max_cut_depth_m:.2f} m</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with p5:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Excavation Earthwork</div>
-                <div class="metric-value">{best_r.earthwork_vol_m3:,.1f} m³</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        # Tabbed interface for 3D View, Cross-Section Profile, Ditches & Route Comparison
-        tab_3d, tab_profile, tab_ditches, tab_compare, tab_sinks = st.tabs([
-            "🌐 Interactive 3D Field Terrain",
-            "📈 Longitudinal Trench Elevation Cross-Section",
-            "📡 Extracted Ditches & Culverts (Roelens LiDAR)",
-            "📋 Candidate Route Comparison & Earthwork Table",
-            "🌊 Identified Waterlogging Depressions (Sinks)"
-        ])
-
-        route_options = {r.route_id: r for r in drainage_plan.routes}
-
-        with tab_3d:
-            st.markdown("#### 🌐 Interactive 3D Bare-Earth Terrain Model")
-            c_3d_1, c_3d_2, c_3d_3, c_3d_4 = st.columns(4)
-            with c_3d_1:
-                selected_route_id_3d = st.selectbox(
-                    "3D Route Overlay:",
-                    options=list(route_options.keys()),
-                    index=0,
-                    key="select_route_3d",
-                    format_func=lambda rid: f"{rid} {'⭐ [Recommended]' if route_options[rid].is_recommended else ''}"
-                )
-            with c_3d_2:
-                vertical_exagg = st.slider(
-                    "Vertical Relief Exaggeration",
-                    min_value=1.0,
-                    max_value=25.0,
-                    value=10.0,
-                    step=1.0,
-                    help="Magnifies vertical relief to make micro-topography, bunds, and waterlogging hollows clearly visible in 3D."
-                )
-            with c_3d_3:
-                flood_depth_sim = st.slider(
-                    "Simulate Rainfall / Flooding (m)",
-                    min_value=0.0,
-                    max_value=1.5,
-                    value=0.0,
-                    step=0.05,
-                    help="Simulates water accumulation by raising a translucent water plane across the field."
-                )
-            with c_3d_4:
-                colormap_3d = st.selectbox(
-                    "3D Color Palette",
-                    options=["Viridis", "Earth", "Turbo", "YlGnBu", "Plasma"],
-                    index=0
-                )
-
-            selected_route_3d = route_options[selected_route_id_3d]
-            fig_3d = create_3d_terrain_figure(
+        with st.spinner("Rendering interactive field map..."):
+            fmap = create_terrain_map(
                 elevation=elevation,
                 metadata=metadata,
-                selected_route=selected_route_3d,
-                vertical_exaggeration=vertical_exagg,
-                flood_depth_m=flood_depth_sim,
-                colormap=colormap_3d
+                elevation_stats=stats,
+                terrain_summary=terrain_summary,
+                slope_pct=slope_pct,
+                aspect=aspect,
+                hillshade=hillshade,
+                depression_depth=hydro_result.depression_depth_array,
+                contour_geojson=contour_geojson,
+                flow_accum=hydro_result.flow_accum_array,
+                streams_geojson=hydro_result.streams_geojson,
+                basins_geojson=hydro_result.basins_geojson,
+                drainage_routes=drainage_plan.routes,
+                priority_sinks=drainage_plan.priority_sinks,
+                candidate_outlets=drainage_plan.candidate_outlets,
+                extracted_ditches_geojson=ditch_result.ditches_geojson,
+                reconnected_culverts_geojson=ditch_result.culverts_geojson,
+                colormap_name=colormap_choice,
+                layer_opacity=opacity_slider,
+                default_layer=default_layer_choice,
+                animate_flow=animate_flow_toggle
             )
-            st.plotly_chart(fig_3d, use_container_width=True)
-            st.caption(
-                "💡 **3D Navigation:** Left-click & drag to rotate; right-click & drag or scroll to zoom; "
-                "double-click to reset view. The selected drainage channel is highlighted in bright cyan."
-            )
-
-        with tab_profile:
-            # Route selector if multiple candidate routes exist
-            selected_route_id = st.selectbox(
-                "Select Drainage Route for Longitudinal Cross-Section:",
-                options=list(route_options.keys()),
-                index=0,
-                key="select_route_profile",
-                format_func=lambda rid: f"{rid} {'⭐ [Recommended / Optimal]' if route_options[rid].is_recommended else ''} (Length: {route_options[rid].length_m:.1f} m, Max Cut: {route_options[rid].max_cut_depth_m:.2f} m)"
-            )
-            selected_route = route_options[selected_route_id]
-            fig = create_trench_profile_figure(selected_route)
-            st.pyplot(fig, use_container_width=True)
-            st.caption(
-                f"ℹ️ **Profile Notes for {selected_route.route_id}:** Starting at waterlogging pit invert ({selected_route.start_elev_m:.2f} m), "
-                f"the trench maintains a minimum hydraulic gravity bed grade of {selected_route.bed_slope_pct:.2f}% down to the field outlet "
-                f"(outlet bed: {selected_route.outlet_bed_elev_m:.2f} m, ground: {selected_route.end_elev_m:.2f} m). "
-                f"Maximum excavation cut depth is {selected_route.max_cut_depth_m:.2f} m with an average depth of {selected_route.avg_cut_depth_m:.2f} m."
+            st_folium(
+                fmap,
+                width="100%",
+                height=560,
+                returned_objects=[],
+                key="field_drainage_master_map"
             )
 
-        with tab_ditches:
-            st.markdown("#### 📡 Research-Backed Ditch Extraction & Culvert Reconnection (Roelens et al. 2018)")
-            d_col1, d_col2, d_col3 = st.columns(3)
-            with d_col1:
-                st.markdown(f"""
-                <div class="metric-card-stream">
-                    <div class="metric-label">Open Ditch Length</div>
-                    <div class="metric-value-stream">{ditch_result.total_ditch_length_m:.1f} m</div>
+    with tab_compare_view:
+        st.markdown("#### ⚖️ Visual Comparison: Original Terrain vs. Waterlogging Risk vs. Drainage Alignment")
+        st.caption("Inspect how the engineered gravity drainage trench routes water out of low-lying depressions towards the field boundary.")
+
+        compare_style = st.radio(
+            "Comparison Layout Mode:",
+            options=["Dual Synchronized View (Side-by-Side)", "Interactive Swipe Split-Screen (Folium)"],
+            horizontal=True,
+            key="compare_mode_selector"
+        )
+
+        if compare_style == "Dual Synchronized View (Side-by-Side)":
+            col_c1, col_c2 = st.columns(2)
+            with col_c1:
+                st.markdown("##### 1. Original Bare-Earth Terrain & Contours")
+                map_terrain = create_focused_map(
+                    mode="terrain",
+                    elevation=elevation,
+                    metadata=metadata,
+                    elevation_stats=stats,
+                    terrain_summary=terrain_summary,
+                    hillshade=hillshade,
+                    contour_geojson=contour_geojson,
+                    layer_opacity=opacity_slider
+                )
+                st_folium(
+                    map_terrain,
+                    width="100%",
+                    height=510,
+                    returned_objects=[],
+                    key="compare_map_terrain"
+                )
+            with col_c2:
+                st.markdown("##### 2. Waterlogging Vulnerability & Proposed Trench")
+                map_drainage = create_focused_map(
+                    mode="drainage",
+                    elevation=elevation,
+                    metadata=metadata,
+                    elevation_stats=stats,
+                    terrain_summary=terrain_summary,
+                    hillshade=hillshade,
+                    depression_depth=hydro_result.depression_depth_array,
+                    drainage_routes=drainage_plan.routes,
+                    candidate_outlets=drainage_plan.candidate_outlets,
+                    extracted_ditches_geojson=ditch_result.ditches_geojson,
+                    layer_opacity=opacity_slider
+                )
+                st_folium(
+                    map_drainage,
+                    width="100%",
+                    height=510,
+                    returned_objects=[],
+                    key="compare_map_drainage"
+                )
+        else:
+            st.caption("Drag the emerald vertical divider left and right to peel between Raw Terrain (Left) and Waterlogging Risk & Channels (Right).")
+            swipe_map = create_side_by_side_swipe_map(
+                elevation=elevation,
+                metadata=metadata,
+                elevation_stats=stats,
+                hillshade=hillshade,
+                depression_depth=hydro_result.depression_depth_array,
+                drainage_routes=drainage_plan.routes,
+                layer_opacity=opacity_slider
+            )
+            st_folium(
+                swipe_map,
+                width="100%",
+                height=560,
+                returned_objects=[],
+                key="compare_map_swipe"
+            )
+
+    with tab_exports:
+        st.markdown("#### 📑 Automated Engineering Reports & GIS Data Exports")
+        st.caption(
+            "All exported geospatial datasets strictly preserve native metric coordinate systems "
+            f"({stats.crs_display}) for immediate drag-and-drop verification in QGIS, ArcGIS Pro, or CAD."
+        )
+
+        badge_name = lidar_meta.data_source_badge if (is_lidar and lidar_meta) else ("Synthetic Indian Farm Benchmark" if is_sample else "Real Farm DEM / Satellite GeoTIFF")
+        plot_name = Path(source_name).stem.replace("_", " ").title()
+
+        exp_col1, exp_col2 = st.columns(2)
+
+        with exp_col1:
+            st.markdown(f"""
+            <div class="export-card">
+                <div style="font-size: 1.05rem; font-weight: 700; color: #2ECC71; margin-bottom: 4px;">
+                    📄 Complete Drainage Feasibility Report (PDF)
                 </div>
-                """, unsafe_allow_html=True)
-            with d_col2:
-                st.markdown(f"""
-                <div class="metric-card-alert">
-                    <div class="metric-label">Reconnected Culverts</div>
-                    <div class="metric-value-alert">{len(ditch_result.culverts)} crossings ({ditch_result.total_culvert_length_m:.1f} m)</div>
+                <div style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 12px;">
+                    Publication-grade multi-page engineering document including executive summary, landholding KPIs,
+                    high-DPI cartographic maps, ranked ditch specifications table, and agronomic guidelines.
                 </div>
-                """, unsafe_allow_html=True)
-            with d_col3:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Total Connected Network</div>
-                    <div class="metric-value">{ditch_result.total_ditch_length_m + ditch_result.total_culvert_length_m:.1f} m</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            with st.spinner("Compiling publication-grade PDF report..."):
+                pdf_bytes = get_cached_pdf_report(
+                    source_key=source_key,
+                    data_source_badge=badge_name,
+                    field_plot_name=plot_name,
+                    flow_accum_threshold=flow_thresh,
+                    min_waterlogging_depth_m=min_water_depth,
+                    min_waterlogging_area_m2=min_water_area,
+                    min_bed_slope_pct=min_slope_pct,
+                    file_bytes=file_bytes,
+                    is_lidar=is_lidar
+                )
+
+            st.download_button(
+                label="📥 Download Drainage Plan Report (PDF)",
+                data=pdf_bytes,
+                file_name=f"{Path(source_name).stem}_drainage_plan_report.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+
+            st.markdown(f"""
+            <div class="export-card" style="margin-top: 14px;">
+                <div style="font-size: 1.05rem; font-weight: 700; color: #00E5FF; margin-bottom: 4px;">
+                    🗺️ Proposed Drainage Routes (GeoJSON)
                 </div>
-                """, unsafe_allow_html=True)
+                <div style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 12px;">
+                    Vector LineStrings with engineered attributes: length (m), natural slope (%),
+                    monotonic bed slope (%), max cut depth (m), and estimated excavation volume (m³).
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-            col_t1, col_t2 = st.columns(2)
-            with col_t1:
-                st.markdown("##### Extracted Open Ditches")
-                if ditch_result.ditches:
-                    ditch_table = []
-                    for d in ditch_result.ditches:
-                        ditch_table.append({
-                            "Segment ID": f"Segment #{d.segment_id}",
-                            "Length (m)": f"{d.length_m:.1f}",
-                            "Start Invert (m)": f"{d.start_elev_m:.2f}",
-                            "End Invert (m)": f"{d.end_elev_m:.2f}",
-                            "Type": "Open Ditch"
-                        })
-                    st.table(ditch_table)
-                else:
-                    st.info("No open ditch centerlines detected at current REA threshold.")
+            routes_geojson_str = json.dumps(drainage_plan.routes_geojson, indent=2)
+            st.download_button(
+                label="📥 Download Proposed Routes (GeoJSON)",
+                data=routes_geojson_str,
+                file_name="recommended_routes.geojson",
+                mime="application/geo+json",
+                use_container_width=True
+            )
 
-            with col_t2:
-                st.markdown("##### Reconnected Culvert / Driveway Crossings")
-                if ditch_result.culverts:
-                    culvert_table = []
-                    for c in ditch_result.culverts:
-                        culvert_table.append({
-                            "Culvert ID": f"Culvert #{c.culvert_id}",
-                            "Gap Distance (m)": f"{c.gap_length_m:.1f}",
-                            "Confidence": f"{c.confidence_score * 100:.1f}%",
-                            "Connected Segments": f"Seg {c.upstream_segment_id} → Seg {c.downstream_segment_id}",
-                            "Elevation Drop (m)": f"{c.elevation_drop_m:.2f}"
-                        })
-                    st.table(culvert_table)
-                else:
-                    st.info("No fragmented ditch gaps or driveway crossings detected.")
+        with exp_col2:
+            st.markdown(f"""
+            <div class="export-card">
+                <div style="font-size: 1.05rem; font-weight: 700; color: #F59E0B; margin-bottom: 4px;">
+                    📡 Extracted Ditches & Culverts (GeoJSON)
+                </div>
+                <div style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 12px;">
+                    Research-backed ditch centerlines (Roelens et al. 2018) and bridged driveway/culvert gaps
+                    ready for overlay against farm boundary shapefiles.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        with tab_compare:
-            st.markdown("#### Candidate Surface Drainage Routes Comparison")
-            table_rows = []
-            for r in drainage_plan.routes:
-                table_rows.append({
-                    "Route ID": r.route_id,
-                    "Target Outlet": f"Outlet #{r.outlet_id}",
-                    "Status": "⭐ Recommended" if r.is_recommended else "Alternative",
-                    "Total Length (m)": f"{r.length_m:,.1f}",
-                    "Ground Slope (%)": f"{r.avg_slope_pct:.2f}%",
-                    "Bed Invert Grade (%)": f"{r.bed_slope_pct:.2f}%",
-                    "Max Cut Depth (m)": f"{r.max_cut_depth_m:.2f}",
-                    "Avg Cut Depth (m)": f"{r.avg_cut_depth_m:.2f}",
-                    "Excavation Volume (m³)": f"{r.earthwork_vol_m3:,.1f}",
-                    "Feasibility": r.feasibility_rank
-                })
-            st.table(table_rows)
+            ditches_geojson_str = json.dumps(ditch_result.ditches_geojson, indent=2)
+            st.download_button(
+                label="📥 Download Extracted Ditches & Culverts (GeoJSON)",
+                data=ditches_geojson_str,
+                file_name="extracted_ditches.geojson",
+                mime="application/geo+json",
+                use_container_width=True
+            )
 
-        with tab_sinks:
-            st.markdown("#### Waterlogging Sinks & Pockets Prioritization")
-            sink_rows = []
-            for s in drainage_plan.priority_sinks:
-                sink_rows.append({
-                    "Sink Priority": f"Priority #{s.sink_id}",
-                    "Ponding Severity": s.severity,
-                    "Surface Area (m²)": f"{s.area_m2:,.0f}",
-                    "Surface Area (Acres)": f"{s.area_m2 / 4046.8564:,.2f}",
-                    "Trapped Water Volume (m³)": f"{s.volume_m3:,.1f}",
-                    "Max Water Depth (cm)": f"{s.max_depth_cm:.1f}",
-                    "Avg Water Depth (cm)": f"{s.mean_depth_cm:.1f}",
-                    "GPS Coordinates": f"{s.pit_coord_wgs84[0]:.6f}, {s.pit_coord_wgs84[1]:.6f}"
-                })
-            st.table(sink_rows)
-    else:
-        st.info("ℹ️ No critical waterlogging depressions requiring artificial surface drainage were detected at the current thresholds.")
+            st.markdown(f"""
+            <div class="export-card" style="margin-top: 14px;">
+                <div style="font-size: 1.05rem; font-weight: 700; color: #38BDF8; margin-bottom: 4px;">
+                    🌊 Waterlogging Depth Raster (GeoTIFF)
+                </div>
+                <div style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 12px;">
+                    Processed depression depth raster (Filled DTM − Raw DTM) in 32-bit floating point,
+                    providing exact puddle water depth in meters per pixel.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            try:
+                with open(hydro_result.depression_depth_path, "rb") as f_dep:
+                    dep_raster_bytes = f_dep.read()
+                st.download_button(
+                    label="📥 Download Waterlogging Depth (GeoTIFF)",
+                    data=dep_raster_bytes,
+                    file_name="waterlogging_depth.tif",
+                    mime="image/tiff",
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.warning(f"Could not read depression depth raster: {e}")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- BOTTOM SPLIT ROW: ELEVATION PROFILE & 3D TERRAIN MESH PREVIEW ---
+    st.markdown("### 📐 Trench Elevation Cross-Section & 3D Topographic Exploration")
+    col_split_left, col_split_right = st.columns([1, 1])
+
+    route_options = {r.route_id: r for r in drainage_plan.routes}
+
+    with col_split_left:
+        st.markdown("#### 📈 Longitudinal Trench Elevation Cross-Section")
+        selected_route_id = st.selectbox(
+            "Select Drainage Channel Route:",
+            options=list(route_options.keys()),
+            index=0,
+            key="select_route_profile",
+            format_func=lambda rid: f"{rid} {'⭐ [Recommended]' if route_options[rid].is_recommended else ''} (Length: {route_options[rid].length_m:.1f} m, Cut: {route_options[rid].max_cut_depth_m:.2f} m)"
+        )
+        selected_route = route_options[selected_route_id]
+        fig_profile = create_trench_profile_figure(selected_route)
+        st.pyplot(fig_profile, use_container_width=True)
+        st.caption(
+            f"ℹ️ **Invert Profile for {selected_route.route_id}:** Starting at waterlogging pit ({selected_route.start_elev_m:.2f} m), "
+            f"the ditch maintains a continuous gravity grade of {selected_route.bed_slope_pct:.2f}% to the outlet "
+            f"(outlet bed: {selected_route.outlet_bed_elev_m:.2f} m, ground: {selected_route.end_elev_m:.2f} m). "
+            f"Max cut: {selected_route.max_cut_depth_m:.2f} m &bull; Earthwork: {selected_route.earthwork_vol_m3:,.1f} m³."
+        )
+
+    with col_split_right:
+        st.markdown("#### 🌐 Interactive 3D Bare-Earth Terrain Preview")
+        c3_sub1, c3_sub2 = st.columns(2)
+        with c3_sub1:
+            vertical_exagg = st.slider(
+                "Vertical Relief Exaggeration",
+                min_value=1.0,
+                max_value=25.0,
+                value=10.0,
+                step=1.0,
+                help="Magnifies vertical relief to make micro-topography, bunds, and waterlogging hollows clearly visible in 3D.",
+                key="slider_vert_exagg"
+            )
+        with c3_sub2:
+            flood_depth_sim = st.slider(
+                "Simulate Flooding (m)",
+                min_value=0.0,
+                max_value=1.5,
+                value=0.0,
+                step=0.05,
+                help="Simulates water accumulation by raising a translucent water plane across the field.",
+                key="slider_flood_sim"
+            )
+
+        fig_3d = create_3d_terrain_figure(
+            elevation=elevation,
+            metadata=metadata,
+            selected_route=selected_route,
+            vertical_exaggeration=vertical_exagg,
+            flood_depth_m=flood_depth_sim,
+            colormap="Viridis"
+        )
+        st.plotly_chart(fig_3d, use_container_width=True)
+        st.caption("💡 **3D Interaction:** Left-click & drag to rotate; scroll to zoom; double-click to reset. Cyan line = proposed trench.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- TABBED ENGINEERING SPECIFICATIONS TABLES ---
+    tab_ditches_tbl, tab_routes_tbl, tab_sinks_tbl = st.tabs([
+        "📡 Extracted Ditches & Culverts (Roelens LiDAR)",
+        "📋 Candidate Drainage Routes Comparison Table",
+        "🌊 Identified Waterlogging Depressions (Sinks)"
+    ])
+
+    with tab_ditches_tbl:
+        d_col1, d_col2, d_col3 = st.columns(3)
+        with d_col1:
+            st.markdown(f"""
+            <div class="metric-card-stream">
+                <div class="metric-label">Open Ditch Length</div>
+                <div class="metric-value-stream">{ditch_result.total_ditch_length_m:.1f} m</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with d_col2:
+            st.markdown(f"""
+            <div class="metric-card-alert">
+                <div class="metric-label">Reconnected Culverts</div>
+                <div class="metric-value-alert">{len(ditch_result.culverts)} crossings ({ditch_result.total_culvert_length_m:.1f} m)</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with d_col3:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Total Connected Network</div>
+                <div class="metric-value">{ditch_result.total_ditch_length_m + ditch_result.total_culvert_length_m:.1f} m</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            st.markdown("##### Extracted Open Ditches")
+            if ditch_result.ditches:
+                ditch_table = []
+                for d in ditch_result.ditches:
+                    ditch_table.append({
+                        "Segment ID": f"Segment #{d.segment_id}",
+                        "Length (m)": f"{d.length_m:.1f}",
+                        "Start Invert (m)": f"{d.start_elev_m:.2f}",
+                        "End Invert (m)": f"{d.end_elev_m:.2f}",
+                        "Type": "Open Ditch"
+                    })
+                st.table(ditch_table)
+            else:
+                st.info("No open ditch centerlines detected at current REA threshold.")
+
+        with col_t2:
+            st.markdown("##### Reconnected Culvert / Driveway Crossings")
+            if ditch_result.culverts:
+                culvert_table = []
+                for c in ditch_result.culverts:
+                    culvert_table.append({
+                        "Culvert ID": f"Culvert #{c.culvert_id}",
+                        "Gap Distance (m)": f"{c.gap_length_m:.1f}",
+                        "Confidence": f"{c.confidence_score * 100:.1f}%",
+                        "Connected Segments": f"Seg {c.upstream_segment_id} → Seg {c.downstream_segment_id}",
+                        "Elevation Drop (m)": f"{c.elevation_drop_m:.2f}"
+                    })
+                st.table(culvert_table)
+            else:
+                st.info("No fragmented ditch gaps or driveway crossings detected.")
+
+    with tab_routes_tbl:
+        st.markdown("##### Candidate Surface Drainage Routes Comparison")
+        table_rows = []
+        for r in drainage_plan.routes:
+            table_rows.append({
+                "Route ID": r.route_id,
+                "Target Outlet": f"Outlet #{r.outlet_id}",
+                "Status": "⭐ Recommended" if r.is_recommended else "Alternative",
+                "Total Length (m)": f"{r.length_m:,.1f}",
+                "Ground Slope (%)": f"{r.avg_slope_pct:.2f}%",
+                "Bed Invert Grade (%)": f"{r.bed_slope_pct:.2f}%",
+                "Max Cut Depth (m)": f"{r.max_cut_depth_m:.2f}",
+                "Avg Cut Depth (m)": f"{r.avg_cut_depth_m:.2f}",
+                "Excavation Volume (m³)": f"{r.earthwork_vol_m3:,.1f}",
+                "Feasibility": r.feasibility_rank
+            })
+        st.table(table_rows)
+
+    with tab_sinks_tbl:
+        st.markdown("##### Waterlogging Sinks & Pockets Prioritization")
+        sink_rows = []
+        for s in drainage_plan.priority_sinks:
+            sink_rows.append({
+                "Sink Priority": f"Priority #{s.sink_id}",
+                "Ponding Severity": s.severity,
+                "Surface Area (m²)": f"{s.area_m2:,.0f}",
+                "Surface Area (Acres)": f"{s.area_m2 / 4046.8564:,.2f}",
+                "Trapped Water Volume (m³)": f"{s.volume_m3:,.1f}",
+                "Max Water Depth (cm)": f"{s.max_depth_cm:.1f}",
+                "Avg Water Depth (cm)": f"{s.mean_depth_cm:.1f}",
+                "GPS Coordinates": f"{s.pit_coord_wgs84[0]:.6f}, {s.pit_coord_wgs84[1]:.6f}"
+            })
+        st.table(sink_rows)
 
     # --- DETAILED METADATA & DATA TABLE EXPANDER ---
     with st.expander("🔍 Technical Geospatial & Hydrological Metrics (Advanced)"):

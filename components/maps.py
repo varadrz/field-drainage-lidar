@@ -563,6 +563,252 @@ def create_terrain_map(
     return fmap
 
 
+def create_focused_map(
+    mode: str,
+    elevation: np.ndarray,
+    metadata: RasterMetadata,
+    elevation_stats: ElevationStats,
+    terrain_summary: Optional[TerrainSummary] = None,
+    hillshade: Optional[np.ndarray] = None,
+    depression_depth: Optional[np.ndarray] = None,
+    contour_geojson: Optional[Dict[str, Any]] = None,
+    drainage_routes: Optional[List[Any]] = None,
+    priority_sinks: Optional[List[Any]] = None,
+    candidate_outlets: Optional[List[Any]] = None,
+    extracted_ditches_geojson: Optional[Dict[str, Any]] = None,
+    layer_opacity: float = 0.8
+) -> folium.Map:
+    """
+    Renders a dedicated, focused map for side-by-side comparison.
+    mode == 'terrain': Highlights bare-earth elevation relief, hillshade, and contours.
+    mode == 'drainage': Highlights waterlogging risk zones, existing ditches, and recommended trench routes.
+    """
+    min_lon, min_lat, max_lon, max_lat = metadata.bounds_wgs84
+    center_lat = (min_lat + max_lat) / 2.0
+    center_lon = (min_lon + max_lon) / 2.0
+    leaflet_bounds = [[min_lat, min_lon], [max_lat, max_lon]]
+
+    fmap = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=18,
+        max_zoom=22,
+        tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        attr="&copy; OpenStreetMap contributors &copy; CARTO"
+    )
+
+    if mode == "terrain":
+        # 1. Hillshade
+        if hillshade is not None:
+            hs_rgba = array_to_rgba(hillshade, colormap_name="gray", alpha=0.55)
+            ImageOverlay(
+                image=hs_rgba,
+                bounds=leaflet_bounds,
+                opacity=0.55,
+                name="3D Land Shape (Hillshade)",
+                overlay=True,
+                control=False
+            ).add_to(fmap)
+
+        # 2. Elevation Surface
+        elev_rgba = array_to_rgba(
+            elevation,
+            colormap_name="terrain",
+            vmin=elevation_stats.min_elevation,
+            vmax=elevation_stats.max_elevation,
+            alpha=layer_opacity
+        )
+        ImageOverlay(
+            image=elev_rgba,
+            bounds=leaflet_bounds,
+            opacity=layer_opacity,
+            name="Land Elevation Map",
+            overlay=True,
+            control=False
+        ).add_to(fmap)
+
+        # 3. Contours
+        if contour_geojson and contour_geojson.get("features"):
+            folium.GeoJson(
+                contour_geojson,
+                name="Elevation Contours",
+                style_function=lambda feature: {
+                    "color": "#f1f5f9" if feature["properties"].get("is_index", False) else "#94a3b8",
+                    "weight": 1.8 if feature["properties"].get("is_index", False) else 0.9,
+                    "opacity": 0.8
+                }
+            ).add_to(fmap)
+
+    elif mode == "drainage":
+        # Subtle hillshade backdrop
+        if hillshade is not None:
+            hs_rgba = array_to_rgba(hillshade, colormap_name="gray", alpha=0.35)
+            ImageOverlay(
+                image=hs_rgba,
+                bounds=leaflet_bounds,
+                opacity=0.35,
+                name="Hillshade Backdrop",
+                overlay=True,
+                control=False
+            ).add_to(fmap)
+
+        # Waterlogging Depression Heatmap
+        if depression_depth is not None and np.any(~np.isnan(depression_depth)):
+            dep_cm = depression_depth * 100.0
+            dep_rgba = array_to_rgba(
+                dep_cm,
+                colormap_name="Blues",
+                vmin=0.0,
+                vmax=max(float(np.nanmax(dep_cm)), 10.0),
+                alpha=0.85
+            )
+            ImageOverlay(
+                image=dep_rgba,
+                bounds=leaflet_bounds,
+                opacity=0.85,
+                name="Waterlogging Risk Zones",
+                overlay=True,
+                control=False
+            ).add_to(fmap)
+
+        # Extracted Ditches (Roelens et al.)
+        if extracted_ditches_geojson and extracted_ditches_geojson.get("features"):
+            folium.GeoJson(
+                extracted_ditches_geojson,
+                name="Existing Ditches (Roelens et al.)",
+                style_function=lambda feature: {
+                    "color": "#f97316",
+                    "weight": 3.0,
+                    "opacity": 0.85
+                }
+            ).add_to(fmap)
+
+        # Candidate Outlets
+        if candidate_outlets:
+            for out in candidate_outlets:
+                folium.CircleMarker(
+                    location=[out.coord_wgs84[0], out.coord_wgs84[1]],
+                    radius=6,
+                    color="#f59e0b",
+                    weight=2,
+                    fill=True,
+                    fill_color="#fbbf24",
+                    fill_opacity=0.9,
+                    tooltip=f"<b>Field Exit #{out.outlet_id}</b><br>Elevation: {out.elevation_m:.2f} m"
+                ).add_to(fmap)
+
+        # Proposed Drainage Routes with Animated AntPath
+        if drainage_routes:
+            for r in drainage_routes:
+                route_color = "#2ecc71" if r.is_recommended else "#38bdf8"
+                AntPath(
+                    locations=r.path_coords_wgs84,
+                    color=route_color,
+                    weight=4.5 if r.is_recommended else 2.5,
+                    opacity=0.9,
+                    dash_array=[10, 18],
+                    delay=600,
+                    pulse_color="#ffffff",
+                    tooltip=f"<b>Route {r.route_id}</b> ({r.length_m:.1f} m, {r.bed_slope_pct:.2f}% grade)"
+                ).add_to(fmap)
+
+    # Dark Minimal Theme Styling
+    dark_css = """
+    <style>
+        .leaflet-container { background-color: #0b0d10 !important; }
+    </style>
+    """
+    fmap.get_root().html.add_child(folium.Element(dark_css))
+    return fmap
+
+
+def create_side_by_side_swipe_map(
+    elevation: np.ndarray,
+    metadata: RasterMetadata,
+    elevation_stats: ElevationStats,
+    hillshade: Optional[np.ndarray],
+    depression_depth: Optional[np.ndarray],
+    drainage_routes: Optional[List[Any]] = None,
+    layer_opacity: float = 0.85
+) -> folium.Map:
+    """
+    Renders an interactive swipe split-screen map with Folium SideBySideLayers:
+    Left: Raw Bare-Earth Elevation Surface & Hillshade.
+    Right: Waterlogging Depressions & Proposed Drainage Alignment.
+    """
+    min_lon, min_lat, max_lon, max_lat = metadata.bounds_wgs84
+    center_lat = (min_lat + max_lat) / 2.0
+    center_lon = (min_lon + max_lon) / 2.0
+    leaflet_bounds = [[min_lat, min_lon], [max_lat, max_lon]]
+
+    fmap = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=18,
+        max_zoom=22,
+        tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        attr="&copy; OpenStreetMap contributors &copy; CARTO"
+    )
+
+    # Left Layer: Elevation Surface (DTM)
+    left_rgba = array_to_rgba(
+        elevation,
+        colormap_name="terrain",
+        vmin=elevation_stats.min_elevation,
+        vmax=elevation_stats.max_elevation,
+        alpha=layer_opacity
+    )
+    layer_left = ImageOverlay(
+        image=left_rgba,
+        bounds=leaflet_bounds,
+        opacity=layer_opacity,
+        name="Bare-Earth Elevation (Left)"
+    ).add_to(fmap)
+
+    # Right Layer: Waterlogging Risk Zones
+    if depression_depth is not None and np.any(~np.isnan(depression_depth)):
+        dep_cm = depression_depth * 100.0
+        right_rgba = array_to_rgba(
+            dep_cm,
+            colormap_name="Blues",
+            vmin=0.0,
+            vmax=max(float(np.nanmax(dep_cm)), 10.0),
+            alpha=0.9
+        )
+    else:
+        right_rgba = array_to_rgba(elevation, colormap_name="viridis", alpha=0.9)
+
+    layer_right = ImageOverlay(
+        image=right_rgba,
+        bounds=leaflet_bounds,
+        opacity=0.9,
+        name="Waterlogging Risk (Right)"
+    ).add_to(fmap)
+
+    # Add SideBySideLayers plugin
+    folium.plugins.SideBySideLayers(layer_left=layer_left, layer_right=layer_right).add_to(fmap)
+
+    # Overlay proposed routes on map
+    if drainage_routes:
+        for r in drainage_routes:
+            if r.is_recommended:
+                folium.PolyLine(
+                    locations=r.path_coords_wgs84,
+                    color="#2ecc71",
+                    weight=4,
+                    opacity=0.95,
+                    tooltip=f"<b>Primary Trench {r.route_id}</b> ({r.length_m:.1f} m, {r.bed_slope_pct:.2f}% grade)"
+                ).add_to(fmap)
+
+    dark_css = """
+    <style>
+        .leaflet-container { background-color: #0b0d10 !important; }
+        .leaflet-sbs { background: #2ecc71 !important; width: 4px !important; }
+        .leaflet-sbs-divider { background: #2ecc71 !important; }
+    </style>
+    """
+    fmap.get_root().html.add_child(folium.Element(dark_css))
+    return fmap
+
+
 def create_elevation_map(
     elevation: np.ndarray,
     metadata: RasterMetadata,

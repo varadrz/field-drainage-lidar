@@ -8,7 +8,7 @@
 [![GeoPandas](https://img.shields.io/badge/Vectors-GeoPandas-139C5A.svg?logo=geopandas&logoColor=white)](https://geopandas.org/)
 [![Plotly 3D](https://img.shields.io/badge/3D_Engine-Plotly-3F4F75.svg?logo=plotly&logoColor=white)](https://plotly.com/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-32%20Passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-35%20Passing-brightgreen.svg)](tests/)
 
 ---
 
@@ -23,6 +23,8 @@ Surface waterlogging and drainage congestion are primary drivers of crop failure
 4. **Extract existing ditch networks (Roelens et al., 2018)**: Relative Elevation Attribute (REA), dynamic Otsu thresholding, morphological skeletonization, and **machine-learning culvert / driveway bridging**.
 5. **Recommend least-cost gravity-fed drainage routes**: Solves anisotropic cost surfaces to design optimal surface trench alignments from ponding pits to boundary outlets with guaranteed downhill slope ($\ge 0.2\%$, zero uphill sections) and exact earthwork volume estimates.
 6. **Deliver interactive 2D animated GIS maps & 3D terrain exploration**: Folium maps with speed-proportional `AntPath` water pulses and Plotly 3D terrain with vertical exaggeration and simulated rainfall/flooding.
+7. **Visual Comparison Mode**: Compare raw terrain vs. waterlogging risk vs. proposed ditch networks using synchronized side-by-side viewports or interactive swipe split-screen overlays.
+8. **Automated PDF Drainage Engineering Reports & QGIS Exports**: Generates publication-grade multi-page ReportLab PDF reports (complete with high-DPI cartographic maps, ranked ditch specifications, and agronomic guidelines) plus 1-click GeoJSON and GeoTIFF downloads for independent QGIS verification.
 
 ---
 
@@ -116,6 +118,7 @@ You can then upload `agrifieldnet_sample_10m.tif` directly into the web dashboar
 | **Interactive 2D Mapping** | `folium`, `streamlit-folium`, `AntPath` | ArcGIS Online, Leaflet Commercial |
 | **Interactive 3D Terrain** | `plotly` (`go.Surface`, `go.Scatter3d`) | Cesium Ion, ArcGIS 3D Scenes |
 | **Longitudinal Profiles** | `matplotlib` | Civil 3D Profile Tools |
+| **PDF Drainage Feasibility Reports** | `reportlab`, `matplotlib` | HydroCAD, Civil 3D Sheet Sets |
 | **Application UI & Caching** | `streamlit` (`@st.cache_data`) | Custom Full-Stack React/Node |
 
 ---
@@ -164,7 +167,8 @@ field-drainage-lidar/
 │   ├── hydrology.py                 # WhiteboxTools depression filling, D8 accumulation, streams
 │   ├── drainage_recommendation.py   # Least-cost path routing, monotonic invert profiling, cut/fill
 │   ├── lidar_processor.py           # laspy LAS/LAZ ingestion, ASPRS Class 2 filtering, 1m DTM
-│   └── drainage_extraction.py       # Roelens et al. (2018) REA, Otsu, skeletonization & culvert bridging
+│   ├── drainage_extraction.py       # Roelens et al. (2018) REA, Otsu, skeletonization & culvert bridging
+│   └── report_generator.py          # Publication-grade ReportLab PDF builder with cartographic maps
 ├── scripts/
 │   ├── generate_synthetic_farm.py   # 1m synthetic GeoTIFF generator (EPSG:32644)
 │   ├── generate_synthetic_lidar.py  # 100k-point synthetic LAS generator with culvert gap
@@ -174,7 +178,8 @@ field-drainage-lidar/
 │   ├── test_terrain.py              # Phase 2 unit tests
 │   ├── test_hydrology.py            # Phase 3 unit tests
 │   ├── test_drainage.py             # Phase 4 unit tests
-│   └── test_lidar.py                # Phase 5 unit tests (32 total tests)
+│   ├── test_lidar.py                # Phase 5 unit tests
+│   └── test_report.py               # Phase 6 PDF & export tests (35 total tests)
 └── requirements.txt                 # Pinned open-source dependencies
 ```
 
