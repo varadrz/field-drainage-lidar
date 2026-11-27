@@ -850,10 +850,10 @@ def main():
                     source_key=source_key,
                     data_source_badge=badge_name,
                     field_plot_name=plot_name,
-                    flow_accum_threshold=flow_thresh,
-                    min_waterlogging_depth_m=min_water_depth,
-                    min_waterlogging_area_m2=min_water_area,
-                    min_bed_slope_pct=min_slope_pct,
+                    flow_accum_threshold=float(flow_accum_threshold),
+                    min_waterlogging_depth_m=float(sink_threshold_m),
+                    min_waterlogging_area_m2=float(min_sink_area),
+                    min_bed_slope_pct=float(min_ditch_slope_pct),
                     file_bytes=file_bytes,
                     is_lidar=is_lidar
                 )
